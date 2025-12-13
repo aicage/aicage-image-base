@@ -72,7 +72,7 @@ load_env_file
 
 BASE_IMAGE="$(get_base_field "${BASE_ALIAS}" base_image)"
 OS_INSTALLER="$(get_base_field "${BASE_ALIAS}" os_installer)"
-OS_INSTALLER_PATH="${ROOT_DIR}/${OS_INSTALLER}"
+OS_INSTALLER_PATH="${ROOT_DIR}/scripts/os-installers/${OS_INSTALLER}"
 [[ -f "${OS_INSTALLER_PATH}" ]] || die "OS installer not found for '${BASE_ALIAS}': ${OS_INSTALLER}"
 
 TARGET="base-${BASE_ALIAS}"

@@ -15,7 +15,6 @@ apk add --no-cache \
   nano \
   openssh-client \
   py3-pip \
-  py3-pipx \
   python3 \
   py3-virtualenv \
   ripgrep \
@@ -36,3 +35,8 @@ cat > /etc/profile.d/locale.sh <<'LOCALE'
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
 LOCALE
+
+script_dir="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+helpers_dir="${script_dir}/helpers"
+"${helpers_dir}/install_node_alpine.sh"
+"${helpers_dir}/install_python.sh"

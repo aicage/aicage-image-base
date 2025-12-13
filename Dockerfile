@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7-labs
 ARG BASE_IMAGE=ubuntu:24.04
-ARG OS_INSTALLER=scripts/os-installers/install_os_packages_debian.sh
+ARG OS_INSTALLER=os-setup_debian.sh
 ARG NODEJS_VERSION=20.17.0
 
 FROM ${BASE_IMAGE} AS base
@@ -26,21 +26,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH="/opt/pipx/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin" \
     NPM_CONFIG_PREFIX=/usr/local
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
-RUN --mount=type=bind,source=${OS_INSTALLER},target=/tmp/install_os_packages.sh,readonly \
-    /tmp/install_os_packages.sh
-
-# Install Node.js 20.x (cline core requires >=20).
-RUN --mount=type=bind,source=scripts,target=/tmp/install,readonly \
-    /tmp/install/install_node.sh
-
-# Add new base tweaks here (e.g., base-specific packages or config overrides).
-
-RUN --mount=type=bind,source=scripts,target=/tmp/install,readonly \
-    /tmp/install/install_python.sh
+RUN --mount=type=bind,source=scripts/os-installers,target=/tmp/os-installers,readonly \
+    /tmp/os-installers/${OS_INSTALLER}
 
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
+# Use tini from PATH to work across distros (e.g. Alpine installs it in /sbin).
+ENTRYPOINT ["tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["bash"]

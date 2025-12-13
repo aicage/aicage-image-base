@@ -1,2 +1,2 @@
 base_image: ghcr.io/catthehacker/ubuntu:act-latest
-os_installer: scripts/os-installers/install_os_packages_debian.sh
+os_installer: os-setup_debian.sh

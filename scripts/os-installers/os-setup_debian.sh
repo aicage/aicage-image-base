@@ -28,3 +28,8 @@ apt-get install -y --no-install-recommends \
 rm -rf /var/lib/apt/lists/*
 
 locale-gen en_US.UTF-8
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+helpers_dir="${script_dir}/helpers"
+"${helpers_dir}/install_node.sh"
+"${helpers_dir}/install_python.sh"

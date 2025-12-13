@@ -46,3 +46,8 @@ if ! command -v gosu >/dev/null 2>&1; then
   curl -fsSL "${url}" -o /usr/local/bin/gosu
   chmod +x /usr/local/bin/gosu
 fi
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+helpers_dir="${script_dir}/helpers"
+"${helpers_dir}/install_node.sh"
+"${helpers_dir}/install_python.sh"
