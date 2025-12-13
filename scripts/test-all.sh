@@ -52,7 +52,7 @@ main() {
   parse_args "$@"
   load_env_file
 
-  local repository="${AICAGE_BASE_REPOSITORY}"
+  local repository="${AICAGE_IMAGE_BASE_REPOSITORY}"
   local version="${AICAGE_VERSION}"
 
   for base_dir in "${BASE_DIR}/bases"/*; do

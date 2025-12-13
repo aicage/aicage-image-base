@@ -15,8 +15,8 @@ Options:
   -h, --help      Show this help and exit
 
 Examples:
-  scripts/test.sh --image wuodan/aicage-base:ubuntu-base-dev
-  scripts/test.sh --image wuodan/aicage-base:act-base-dev -- --filter base
+  scripts/test.sh --image wuodan/aicage-image-base:ubuntu-base-dev
+  scripts/test.sh --image wuodan/aicage-image-base:act-base-dev -- --filter base
 USAGE
   exit 1
 }
@@ -58,7 +58,7 @@ parse_args() {
 
 run_tests() {
   log "Running base smoke tests via bats"
-  AICAGE_BASE_IMAGE="${IMAGE_REF}" bats "${SMOKE_DIR}" "${BATS_ARGS[@]}"
+  AICAGE_IMAGE_BASE_IMAGE="${IMAGE_REF}" bats "${SMOKE_DIR}" "${BATS_ARGS[@]}"
 }
 
 parse_args "$@"

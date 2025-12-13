@@ -1,4 +1,4 @@
-variable "AICAGE_BASE_REPOSITORY" {
+variable "AICAGE_IMAGE_BASE_REPOSITORY" {
   description = "Repository namespace/image for base layers."
 }
 

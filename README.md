@@ -1,4 +1,4 @@
-# aicage-base
+# aicage-image-base
 
 Base images for the aicage agent builds. Each base alias lives in `bases/<alias>/base.yaml` and is
 built by the scripts in `scripts/`.
@@ -11,5 +11,5 @@ built by the scripts in `scripts/`.
 
 ## CI
 
-GitHub Actions runs `aicage-base/.github/workflows/base-images.yml` on tags only. It lint/builds/tests,
-then publishes `${AICAGE_BASE_REPOSITORY}:<alias>-<version>` and `:latest` tags.
+GitHub Actions runs `aicage-image-base/.github/workflows/base-images.yml` on tags only. It lint/builds/tests,
+then publishes `${AICAGE_IMAGE_BASE_REPOSITORY}:<alias>-<version>` and `:latest` tags.

@@ -9,9 +9,9 @@ ARG TARGETARCH
 ARG OS_INSTALLER
 ARG NODEJS_VERSION
 
-LABEL org.opencontainers.image.title="aicage-base" \
+LABEL org.opencontainers.image.title="aicage-image-base" \
       org.opencontainers.image.description="Prebuilt base layer for agent images" \
-      org.opencontainers.image.source="https://github.com/Wuodan/aicage-base" \
+      org.opencontainers.image.source="https://github.com/Wuodan/aicage-image-base" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 ENV DEBIAN_FRONTEND=noninteractive \

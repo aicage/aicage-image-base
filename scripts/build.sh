@@ -31,10 +31,10 @@ USAGE
 source "${ROOT_DIR}/scripts/common.sh"
 
 validate_base_settings() {
-  [[ -n "${AICAGE_BASE_REPOSITORY:-}" ]] || die "AICAGE_BASE_REPOSITORY is empty."
+  [[ -n "${AICAGE_IMAGE_BASE_REPOSITORY:-}" ]] || die "AICAGE_IMAGE_BASE_REPOSITORY is empty."
   [[ -n "${AICAGE_VERSION:-}" ]] || die "AICAGE_VERSION is empty."
-  if [[ "${AICAGE_BASE_REPOSITORY}" == "${AICAGE_REPOSITORY}" ]]; then
-    die "AICAGE_BASE_REPOSITORY must differ from AICAGE_REPOSITORY to keep base images separate."
+  if [[ "${AICAGE_IMAGE_BASE_REPOSITORY}" == "${AICAGE_REPOSITORY}" ]]; then
+    die "AICAGE_IMAGE_BASE_REPOSITORY must differ from AICAGE_REPOSITORY to keep base images separate."
   fi
 }
 
@@ -99,18 +99,18 @@ main() {
   [[ -f "${os_installer_path}" ]] || die "OS installer not found for '${BASE_ALIAS}': ${os_installer}"
 
   local raw_platforms="${PLATFORM_OVERRIDE:-${AICAGE_PLATFORMS:-${PLATFORMS:-}}}"
-  [[ -n "${raw_platforms}" ]] || die "Platform list is empty; set AICAGE_BASE_PLATFORMS or use --platform."
+  [[ -n "${raw_platforms}" ]] || die "Platform list is empty; set AICAGE_IMAGE_BASE_PLATFORMS or use --platform."
   local platform_list=()
   split_list "${raw_platforms}" platform_list
-  [[ ${#platform_list[@]} -gt 0 ]] || die "Platform list is empty; set AICAGE_BASE_PLATFORMS or use --platform."
+  [[ ${#platform_list[@]} -gt 0 ]] || die "Platform list is empty; set AICAGE_IMAGE_BASE_PLATFORMS or use --platform."
   local platforms_str="${platform_list[*]}"
 
   local target="base-${BASE_ALIAS}"
-  local version_tag="${AICAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${AICAGE_VERSION}"
-  local latest_tag="${AICAGE_BASE_REPOSITORY}:${BASE_ALIAS}-latest"
+  local version_tag="${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${AICAGE_VERSION}"
+  local latest_tag="${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-latest"
   local description="Base image for aicage (${BASE_ALIAS})"
   local env_prefix=(
-    AICAGE_BASE_REPOSITORY="${AICAGE_BASE_REPOSITORY}"
+    AICAGE_IMAGE_BASE_REPOSITORY="${AICAGE_IMAGE_BASE_REPOSITORY}"
     AICAGE_VERSION="${AICAGE_VERSION}"
     AICAGE_PLATFORMS="${platforms_str}"
   )
@@ -127,7 +127,7 @@ main() {
       "${PUSH_MODE}"
   )
 
-  echo "[build-base] Target=${target} Platforms=${platforms_str} Repo=${AICAGE_BASE_REPOSITORY} Version=${AICAGE_VERSION} UpstreamBase=${base_image} Installer=${os_installer} Tags=${version_tag},${latest_tag} Mode=${PUSH_MODE}" >&2
+  echo "[build-base] Target=${target} Platforms=${platforms_str} Repo=${AICAGE_IMAGE_BASE_REPOSITORY} Version=${AICAGE_VERSION} UpstreamBase=${base_image} Installer=${os_installer} Tags=${version_tag},${latest_tag} Mode=${PUSH_MODE}" >&2
   "${cmd[@]}"
 }
 
