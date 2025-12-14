@@ -25,6 +25,18 @@ mkdir -p /workspace
 chown "${TARGET_UID}:${TARGET_GID}" /workspace
 chown -R "${TARGET_UID}:${TARGET_GID}" "${TARGET_HOME}"
 
+TOOL_MOUNT="/aicage/tool-config"
+if [[ -n "${AICAGE_TOOL_PATH:-}" ]]; then
+  target_path="${AICAGE_TOOL_PATH}"
+  if [[ "${target_path}" == "~/"* ]]; then
+    target_path="${TARGET_HOME}/${target_path:2}"
+  elif [[ "${target_path:0:1}" != "/" ]]; then
+    target_path="${TARGET_HOME}/${target_path}"
+  fi
+  mkdir -p "$(dirname "${target_path}")"
+  ln -sfn "${TOOL_MOUNT}" "${target_path}"
+fi
+
 export HOME="${TARGET_HOME}"
 export USER="${TARGET_USER}"
 export PATH="${HOME}/.local/bin:${PATH}"

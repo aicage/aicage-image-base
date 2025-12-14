@@ -14,7 +14,7 @@ Usage: scripts/build.sh [--base <alias>] [options]
 
 Options:
   --base <value>       Base alias (required; must match a bases/<name> folder)
-  --platform <value>   Override platform list (default: env or linux/amd64,linux/arm64)
+  --platform <value>   Override platform list (default: linux/amd64,linux/arm64)
   --push               Push the image instead of loading it locally
   --version <value>    Override AICAGE_VERSION for this build
   -h, --help           Show this help and exit
