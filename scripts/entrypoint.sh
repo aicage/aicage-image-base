@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# set up user and group
 TARGET_UID="${AICAGE_UID:-${UID:-1000}}"
 TARGET_GID="${AICAGE_GID:-${GID:-1000}}"
 TARGET_USER="${AICAGE_USER:-${USER:-aicage}}"
@@ -21,6 +22,12 @@ TARGET_USER="$(getent passwd "${TARGET_UID}" | cut -d: -f1)"
 TARGET_HOME="$(getent passwd "${TARGET_UID}" | cut -d: -f6)"
 TARGET_HOME="${TARGET_HOME:-/home/${TARGET_USER}}"
 
+# add user to docker group if present
+if getent group docker >/dev/null; then
+  usermod -aG docker "${TARGET_USER}"
+fi
+
+# set up workspace folder
 mkdir -p /workspace
 chown "${TARGET_UID}:${TARGET_GID}" /workspace
 chown -R "${TARGET_UID}:${TARGET_GID}" "${TARGET_HOME}"
@@ -43,4 +50,5 @@ export PATH="${HOME}/.local/bin:${PATH}"
 
 cd /workspace
 
-exec gosu "${TARGET_UID}:${TARGET_GID}" "$@"
+# switch to user
+exec gosu "${TARGET_UID}" "$@"

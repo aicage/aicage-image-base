@@ -13,8 +13,7 @@ Options:
   -h, --help      Show this help and exit
 
 Examples:
-  scripts/test.sh --image wuodan/aicage-image-base:ubuntu-base-dev
-  scripts/test.sh --image wuodan/aicage-image-base:act-base-dev -- --filter base
+  scripts/test.sh --image wuodan/aicage-image-base:ubuntu-latest
 USAGE
   exit 1
 }

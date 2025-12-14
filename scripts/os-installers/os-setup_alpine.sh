@@ -25,11 +25,11 @@ apk add --no-cache \
   xz \
   zip
 
-update-ca-certificates >/dev/null 2>&1 || true
+update-ca-certificates >/dev/null 2>&1
 
 # Alpine uses musl; "C.UTF-8" is always safe.
 # If you want en_US.UTF-8 specifically, add musl-locales + musl-locales-lang.
-apk add --no-cache musl-locales musl-locales-lang >/dev/null 2>&1 || true
+apk add --no-cache musl-locales musl-locales-lang >/dev/null 2>&1
 
 cat > /etc/profile.d/locale.sh <<'LOCALE'
 export LANG=C.UTF-8
@@ -38,5 +38,7 @@ LOCALE
 
 script_dir="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 helpers_dir="${script_dir}/helpers"
+
 "${helpers_dir}/install_node_alpine.sh"
 "${helpers_dir}/install_python.sh"
+"${helpers_dir}/install_docker_alpine.sh"

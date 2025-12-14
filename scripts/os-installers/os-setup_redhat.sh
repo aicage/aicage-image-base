@@ -8,6 +8,7 @@ dnf -y install \
   bash-completion \
   ca-certificates \
   curl \
+  dnf-plugins-core \
   git \
   gnupg2 \
   jq \
@@ -26,7 +27,6 @@ dnf -y install \
   glibc-langpack-en \
   glibc-locale-source \
   shadow-utils
-dnf clean all
 
 localedef -i en_US -f UTF-8 /usr/lib/locale/en_US.UTF-8
 
@@ -49,5 +49,10 @@ fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 helpers_dir="${script_dir}/helpers"
+
 "${helpers_dir}/install_node.sh"
 "${helpers_dir}/install_python.sh"
+"${helpers_dir}/install_docker_redhat.sh"
+
+# cleanup
+dnf clean all

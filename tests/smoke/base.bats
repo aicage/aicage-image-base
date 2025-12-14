@@ -22,3 +22,23 @@
   [ "${gid}" -eq 2345 ]
   [[ "${home}" == "/home/demo" ]]
 }
+
+@test "docker CLI present" {
+  run docker run --rm \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    /bin/bash -lc "docker --version"
+  [ "$status" -eq 0 ]
+  [[ "$output" == Docker\ version* ]]
+}
+
+@test "docker group exists and user is a member" {
+  run docker run --rm \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    /bin/bash -lc "getent group docker | cut -d: -f3; id -nG"
+  [ "$status" -eq 0 ]
+  mapfile -t lines <<<"${output}"
+  gid="${lines[0]}"
+  groups="${lines[1]}"
+  [[ -n "${gid}" ]]
+  [[ " ${groups} " == *" docker "* ]]
+}

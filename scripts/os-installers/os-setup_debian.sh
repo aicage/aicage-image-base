@@ -25,11 +25,16 @@ apt-get install -y --no-install-recommends \
   unzip \
   xz-utils \
   zip
-rm -rf /var/lib/apt/lists/*
 
 locale-gen en_US.UTF-8
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 helpers_dir="${script_dir}/helpers"
+
 "${helpers_dir}/install_node.sh"
 "${helpers_dir}/install_python.sh"
+"${helpers_dir}/install_docker_debian.sh"
+
+# cleanup
+apt-get clean
+rm -rf /var/lib/apt/lists/*
