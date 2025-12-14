@@ -1,0 +1,14 @@
+name: Build Base Image (Ubuntu)
+
+"on":
+  push:
+    tags:
+      - "*"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      base: ubuntu
+    secrets: inherit
