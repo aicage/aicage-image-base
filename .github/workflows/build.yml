@@ -3,7 +3,7 @@ name: Build Base Image (Template)
 run-name: Build base image (${{ inputs.base }})
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       base:
         description: Base alias to build (matches bases/<alias>)

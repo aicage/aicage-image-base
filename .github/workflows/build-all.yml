@@ -1,0 +1,33 @@
+name: Build All Base Images
+
+on:
+  push:
+    tags:
+      - "*"
+  schedule:
+    - cron: "0 2 * * 2"
+  workflow_dispatch: {}
+
+concurrency:
+  group: build-all
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    name: Dispatch base builds
+    runs-on: ubuntu-latest
+    env:
+      REF: ${{ github.ref }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+
+      - name: Dispatch per-base builds
+        run: |
+          set -euo pipefail
+          for dir in bases/*; do
+            BASE_ALIAS="$(basename "${dir}")"
+            echo "Dispatching ${BASE_ALIAS} for ${REF}"
+            gh workflow run build.yml --ref "${REF}" -f base="${BASE_ALIAS}"
+          done
