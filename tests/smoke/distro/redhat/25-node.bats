@@ -3,7 +3,7 @@
 @test "node toolchain present" {
   run docker run --rm \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
-    /bin/bash -lc "set -euo pipefail
+    /bin/bash -c "set -euo pipefail
       command -v node
       command -v npm
       command -v corepack"

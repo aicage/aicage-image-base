@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 @test "base image has core runtimes" {
-  run docker run --rm "${AICAGE_IMAGE_BASE_IMAGE}" /bin/bash -lc "echo base-smoke"
+  run docker run --rm "${AICAGE_IMAGE_BASE_IMAGE}" /bin/bash -c "echo base-smoke"
   [ "$status" -eq 0 ]
   [[ "$output" == *"base-smoke"* ]]
 }
@@ -12,7 +12,7 @@
     --env AICAGE_GID=2345 \
     --env AICAGE_USER=demo \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
-    /bin/bash -lc "printf '%s\n%s\n%s\n' \"\$(id -u)\" \"\$(id -g)\" \"\${HOME}\""
+    /bin/bash -c "printf '%s\n%s\n%s\n' \"\$(id -u)\" \"\$(id -g)\" \"\${HOME}\""
   [ "$status" -eq 0 ]
   mapfile -t lines <<<"${output}"
   uid="${lines[0]}"
@@ -26,7 +26,7 @@
 @test "docker CLI present" {
   run docker run --rm \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
-    /bin/bash -lc "docker --version"
+    /bin/bash -c "docker --version"
   [ "$status" -eq 0 ]
   [[ "$output" == Docker\ version* ]]
 }
@@ -34,7 +34,7 @@
 @test "docker group exists and user is a member" {
   run docker run --rm \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
-    /bin/bash -lc "getent group docker | cut -d: -f3; id -nG"
+    /bin/bash -c "getent group docker | cut -d: -f3; id -nG"
   [ "$status" -eq 0 ]
   mapfile -t lines <<<"${output}"
   gid="${lines[0]}"
@@ -56,7 +56,7 @@
     --env AICAGE_GID=2345 \
     --env AICAGE_USER=demo \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
-    /bin/bash -lc "set -euo pipefail
+    /bin/bash -c "set -euo pipefail
       [[ -L \${HOME}/.gitconfig ]]
       [[ -L \${HOME}/.config/git/config ]]
       [[ \$(readlink -f \${HOME}/.gitconfig) == '/aicage/host/gitconfig' ]]
@@ -82,7 +82,7 @@
     --env AICAGE_GID=6789 \
     --env AICAGE_USER=agent \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
-    /bin/bash -lc "set -euo pipefail
+    /bin/bash -c "set -euo pipefail
       [[ -L \${HOME}/.gnupg ]]
       [[ -L \${HOME}/.ssh ]]
       [[ \$(readlink -f \${HOME}/.gnupg) == '/aicage/host/gnupg' ]]
