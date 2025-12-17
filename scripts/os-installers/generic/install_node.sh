@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${NODEJS_VERSION:?NODEJS_VERSION is required}"
 : "${TARGETARCH:?TARGETARCH is required}"
 
 case "${TARGETARCH}" in
@@ -12,6 +11,20 @@ case "${TARGETARCH}" in
     exit 1
     ;;
 esac
+
+NODEJS_VERSION="${NODEJS_VERSION:-}"
+if [[ -z "${NODEJS_VERSION}" ]]; then
+  NODEJS_VERSION="$(
+    curl -fsSL https://nodejs.org/dist/index.json \
+      | jq -r 'map(select(.lts != false)) | .[0].version'
+  )"
+  NODEJS_VERSION="${NODEJS_VERSION#v}"
+fi
+
+if [[ -z "${NODEJS_VERSION}" ]]; then
+  echo "Unable to resolve latest Node.js LTS version" >&2
+  exit 1
+fi
 
 if ! command -v node >/dev/null 2>&1; then
   curl -fsSL "https://nodejs.org/dist/v${NODEJS_VERSION}/node-v${NODEJS_VERSION}-linux-${NODE_DIST_ARCH}.tar.xz" \

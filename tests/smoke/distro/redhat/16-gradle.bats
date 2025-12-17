@@ -6,14 +6,10 @@ setup_file() {
   require_fedora
 }
 
-@test "java toolchain present" {
+@test "gradle present" {
   run docker run --rm \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     /bin/bash -lc "set -euo pipefail
-      command -v java
-      command -v javac
-      command -v mvn
-      command -v ant
-      command -v protoc"
+      command -v gradle"
   [ "$status" -eq 0 ]
 }

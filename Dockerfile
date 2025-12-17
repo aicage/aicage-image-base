@@ -1,13 +1,11 @@
 # syntax=docker/dockerfile:1.7-labs
 ARG BASE_IMAGE=ubuntu:24.04
 ARG OS_INSTALLER=os-setup_debian.sh
-ARG NODEJS_VERSION=20.17.0
 
 FROM ${BASE_IMAGE} AS base
 
 ARG TARGETARCH
 ARG OS_INSTALLER
-ARG NODEJS_VERSION
 
 LABEL org.opencontainers.image.title="aicage-image-base" \
       org.opencontainers.image.description="Prebuilt base layer for agent images" \
