@@ -7,6 +7,12 @@ fi
 
 : "${TARGETARCH:?TARGETARCH is required}"
 
+jdk_os="linux"
+. /etc/os-release
+if [[ "${ID:-}" == "alpine" ]]; then
+  jdk_os="alpine-linux"
+fi
+
 case "${TARGETARCH}" in
   amd64) JDK_ARCH="x64" ;;
   arm64) JDK_ARCH="aarch64" ;;
@@ -28,7 +34,7 @@ fi
 
 jdk_json="$(
   curl -fsSL \
-    "https://api.adoptium.net/v3/assets/feature_releases/${jdk_version}/ga?architecture=${JDK_ARCH}&heap_size=normal&image_type=jdk&jvm_impl=hotspot&os=linux&vendor=eclipse"
+    "https://api.adoptium.net/v3/assets/feature_releases/${jdk_version}/ga?architecture=${JDK_ARCH}&heap_size=normal&image_type=jdk&jvm_impl=hotspot&os=${jdk_os}&vendor=eclipse"
 )"
 
 jdk_url="$(echo "${jdk_json}" | jq -r '.[0].binaries[0].package.link')"
