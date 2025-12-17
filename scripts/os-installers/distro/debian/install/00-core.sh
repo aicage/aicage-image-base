@@ -14,8 +14,6 @@ apt-get install -y --no-install-recommends \
   iproute2 \
   jq \
   less \
-  locales \
-  locales-all \
   nano \
   netcat-openbsd \
   openssh-client \

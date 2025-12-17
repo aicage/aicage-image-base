@@ -11,8 +11,6 @@ dnf -y install \
   dnf-plugins-core \
   file \
   git \
-  glibc-all-langpacks \
-  glibc-locale-source \
   gnupg2 \
   iproute \
   jq \
