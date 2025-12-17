@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+apt-get install -y --no-install-recommends \
+  bash \
+  bash-completion \
+  ca-certificates \
+  curl \
+  dnsutils \
+  file \
+  git \
+  gnupg \
+  iproute2 \
+  jq \
+  less \
+  locales \
+  nano \
+  netcat-openbsd \
+  openssh-client \
+  p7zip-full \
+  patch \
+  pipx \
+  procps \
+  python3 \
+  python3-pip \
+  python3-venv \
+  ripgrep \
+  rsync \
+  tar \
+  time \
+  tini \
+  tree \
+  unzip \
+  xz-utils \
+  zip

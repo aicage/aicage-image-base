@@ -1,2 +1,2 @@
 base_image: debian:latest
-os_installer: os-setup_debian.sh
+os_installer: distro/debian/install.sh
