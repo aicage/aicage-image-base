@@ -3,6 +3,12 @@ name: Build Base Image (Template)
 run-name: Build base image (${{ inputs.base }})
 
 "on":
+  workflow_call:
+    inputs:
+      base:
+        description: Base alias to build (matches bases/<alias>)
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       base:
@@ -55,7 +61,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   build_amd64:
-    name: Build, test, and publish ${{ inputs.base }} (amd64)
+    name: "amd64: Build, test, and publish ${{ inputs.base }}"
     runs-on: ubuntu-latest
     needs: load_config
     env:
@@ -131,7 +137,7 @@ jobs:
           docker push "${LATEST_TAG}"
 
   build_arm64:
-    name: Build, test, and publish ${{ inputs.base }} (arm64)
+    name: "arm64: Build, test, and publish ${{ inputs.base }}"
     runs-on: ubuntu-24.04-arm
     needs: load_config
     env:
