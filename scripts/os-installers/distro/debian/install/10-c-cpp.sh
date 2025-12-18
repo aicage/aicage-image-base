@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if apt-cache show ltrace >/dev/null 2>&1; then
+  TRACE_TOOLS=strace ltrace
+else
+  TRACE_TOOLS=strace
+fi
+
 apt-get install -y --no-install-recommends \
   build-essential \
   clang \
@@ -9,9 +15,8 @@ apt-get install -y --no-install-recommends \
   libssl-dev \
   lld \
   lldb \
-  ltrace \
+  ${TRACE_TOOLS} \
   ninja-build \
   pkg-config \
-  strace \
   valgrind \
   zlib1g-dev

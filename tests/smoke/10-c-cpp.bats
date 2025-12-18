@@ -3,7 +3,7 @@
 @test "c/c++ toolchain present" {
   run docker run --rm \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
-    /bin/bash -c "
+    /bin/bash -c '
       set -euo pipefail
       command -v gcc
       command -v g++
@@ -15,8 +15,8 @@
       command -v pkg-config
       command -v valgrind
       command -v strace
-      command -v ltrace
+      command -v ltrace || [ "arm64" == "$(uname -m)" ]
       command -v ld.lld >/dev/null || command -v lld >/dev/null
-    "
+    '
   [ "$status" -eq 0 ]
 }
