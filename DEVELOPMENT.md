@@ -5,7 +5,7 @@ OS, tweaking packages, or validating the base matrix.
 
 ## Prerequisites
 
-- Docker with Buildx (`docker buildx version`).
+- Docker (`docker --version`).
 - QEMU/binfmt for multi-arch builds.
 - Bats (`bats --version`) for smoke suites.
 - Python 3.11+ with `pip install -r requirements-dev.txt` to pull lint/test tooling.
@@ -21,7 +21,7 @@ pip install -r requirements-dev.txt
 ## Repo layout
 
 - `bases/<alias>/base.yaml` — Defines the upstream image and installer for each base.
-- `Dockerfile` / `docker-bake.hcl` — Buildx entrypoints.
+- `Dockerfile` — Docker build entrypoint.
 - `scripts/` — Build/test helpers.
 - `tests/smoke/` — Bats suites for base images.
 - `config.yaml` — Default repository, version, and platform settings.
@@ -39,10 +39,10 @@ Base aliases come from folders under `bases/`.
 
 ```bash
 # Build and load a single base
-scripts/build.sh --base ubuntu --platform linux/amd64
+scripts/util/build.sh --base ubuntu --platform linux/amd64
 
 # Build all bases (platforms from config/environment)
-scripts/build-all.sh
+scripts/util/build-all.sh
 ```
 
 ## Test

@@ -1,6 +1,6 @@
 name: Build All Base Images
 
-on:
+"on":
   push:
     tags:
       - "*"
