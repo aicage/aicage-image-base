@@ -30,6 +30,7 @@ jobs:
       AICAGE_VERSION: ${{ github.ref_name }}
       ROOT_DIR: ${{ github.workspace }}
     outputs:
+      AICAGE_IMAGE_REGISTRY: ${{ steps.config.outputs.AICAGE_IMAGE_REGISTRY }}
       AICAGE_IMAGE_BASE_REPOSITORY: ${{ steps.config.outputs.AICAGE_IMAGE_BASE_REPOSITORY }}
       BASE_IMAGE: ${{ steps.config.outputs.BASE_IMAGE }}
       OS_INSTALLER: ${{ steps.config.outputs.OS_INSTALLER }}
@@ -54,6 +55,7 @@ jobs:
           source scripts/common.sh
           load_config_file
           {
+            echo "AICAGE_IMAGE_REGISTRY=${AICAGE_IMAGE_REGISTRY}"
             echo "AICAGE_IMAGE_BASE_REPOSITORY=${AICAGE_IMAGE_BASE_REPOSITORY}"
             echo "BASE_IMAGE=$(get_base_field "${BASE_ALIAS}" base_image)"
             echo "OS_INSTALLER=$(get_base_field "${BASE_ALIAS}" os_installer)"
@@ -67,6 +69,7 @@ jobs:
       PLATFORM: linux/amd64
       ARCH_SUFFIX: amd64
       BASE_ALIAS: ${{ inputs.base }}
+      AICAGE_IMAGE_REGISTRY: ${{ needs.load_config.outputs.AICAGE_IMAGE_REGISTRY }}
       AICAGE_IMAGE_BASE_REPOSITORY: ${{ needs.load_config.outputs.AICAGE_IMAGE_BASE_REPOSITORY }}
       AICAGE_VERSION: ${{ github.ref_name }}
     outputs:
@@ -81,8 +84,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION_TAG="${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${ARCH_SUFFIX}-${AICAGE_VERSION}"
-          LATEST_TAG="${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${ARCH_SUFFIX}-latest"
+          VERSION_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${ARCH_SUFFIX}-${AICAGE_VERSION}"
+          LATEST_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${ARCH_SUFFIX}-latest"
           {
             echo "VERSION_TAG=${VERSION_TAG}"
             echo "LATEST_TAG=${LATEST_TAG}"
@@ -137,6 +140,7 @@ jobs:
       PLATFORM: linux/arm64
       ARCH_SUFFIX: arm64
       BASE_ALIAS: ${{ inputs.base }}
+      AICAGE_IMAGE_REGISTRY: ${{ needs.load_config.outputs.AICAGE_IMAGE_REGISTRY }}
       AICAGE_IMAGE_BASE_REPOSITORY: ${{ needs.load_config.outputs.AICAGE_IMAGE_BASE_REPOSITORY }}
       AICAGE_VERSION: ${{ github.ref_name }}
     outputs:
@@ -151,8 +155,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION_TAG="${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${ARCH_SUFFIX}-${AICAGE_VERSION}"
-          LATEST_TAG="${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${ARCH_SUFFIX}-latest"
+          VERSION_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${ARCH_SUFFIX}-${AICAGE_VERSION}"
+          LATEST_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${ARCH_SUFFIX}-latest"
           {
             echo "VERSION_TAG=${VERSION_TAG}"
             echo "LATEST_TAG=${LATEST_TAG}"
@@ -206,6 +210,7 @@ jobs:
 
     env:
       BASE_ALIAS: ${{ inputs.base }}
+      AICAGE_IMAGE_REGISTRY: ${{ needs.load_config.outputs.AICAGE_IMAGE_REGISTRY }}
       AICAGE_IMAGE_BASE_REPOSITORY: ${{ needs.load_config.outputs.AICAGE_IMAGE_BASE_REPOSITORY }}
       AICAGE_VERSION: ${{ github.ref_name }}
 
@@ -228,8 +233,8 @@ jobs:
       - name: "Create and push multi-arch manifest"
         run: |
           set -euo pipefail
-          VERSION_TAG="${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${AICAGE_VERSION}"
-          LATEST_TAG="${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-latest"
+          VERSION_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${AICAGE_VERSION}"
+          LATEST_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-latest"
 
           docker buildx imagetools create \
             -t "${VERSION_TAG}" \

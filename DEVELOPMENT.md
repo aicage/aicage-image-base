@@ -28,18 +28,18 @@ pip install -r requirements-dev.txt
 
 ## Configuration
 
-Defaults from `config.yaml` (overridable via env vars):
+Setting from `config.yaml`:
 
-- `AICAGE_IMAGE_BASE_REPOSITORY` (default `ghcr.io/wuodan/aicage-image-base`)
+- `AICAGE_IMAGE_REGISTRY` (default `ghcr.io`)
+- `AICAGE_IMAGE_BASE_REPOSITORY` (default `wuodan/aicage-image-base`)
 - `AICAGE_VERSION` (default `dev`)
-- `AICAGE_PLATFORMS` (default `linux/amd64 linux/arm64`)
 Base aliases come from folders under `bases/`.
 
 ## Build
 
 ```bash
 # Build and load a single base
-scripts/util/build.sh --base ubuntu --platform linux/amd64
+scripts/util/build.sh --base ubuntu
 
 # Build all bases (platforms from config/environment)
 scripts/util/build-all.sh

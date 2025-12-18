@@ -65,26 +65,19 @@ OS_INSTALLER="$(get_base_field "${BASE_ALIAS}" os_installer)"
 OS_INSTALLER_PATH="${ROOT_DIR}/scripts/os-installers/${OS_INSTALLER}"
 [[ -f "${OS_INSTALLER_PATH}" ]] || die "OS installer not found for '${BASE_ALIAS}': ${OS_INSTALLER}"
 
-VERSION_TAG="${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${AICAGE_VERSION}"
-LATEST_TAG="${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-latest"
-DESCRIPTION="Base image for aicage (${BASE_ALIAS})"
+VERSION_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${AICAGE_VERSION}"
+LATEST_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-latest"
 
 (
- echo "[build-base] Platforms=${AICAGE_PLATFORMS}"
- echo "Repo=${AICAGE_IMAGE_BASE_REPOSITORY}"
- echo "Version=${AICAGE_VERSION}"
  echo "UpstreamBase=${BASE_IMAGE}"
  echo "Installer=${OS_INSTALLER}"
  echo "Tags=${VERSION_TAG},${LATEST_TAG}"
 ) >&2
 
-env \
-  "AICAGE_IMAGE_BASE_REPOSITORY=${AICAGE_IMAGE_BASE_REPOSITORY}" \
-  "AICAGE_VERSION=${AICAGE_VERSION}" \
-  docker build \
-    --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
-    --build-arg "OS_INSTALLER=${OS_INSTALLER}" \
-    --tag "${VERSION_TAG}" \
-    --tag "${LATEST_TAG}" \
-    --label "org.opencontainers.image.description=${DESCRIPTION}" \
-    .
+docker build \
+  --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
+  --build-arg "OS_INSTALLER=${OS_INSTALLER}" \
+  --tag "${VERSION_TAG}" \
+  --tag "${LATEST_TAG}" \
+  --label "org.opencontainers.image.description=Base image for aicage (${BASE_ALIAS})" \
+  .
