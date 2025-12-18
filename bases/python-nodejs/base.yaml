@@ -1,2 +1,0 @@
-base_image: nikolaik/python-nodejs:latest
-os_installer: distro/debian/install.sh
