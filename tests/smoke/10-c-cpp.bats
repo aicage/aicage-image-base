@@ -15,7 +15,7 @@
       command -v pkg-config
       command -v valgrind
       command -v strace
-      command -v ltrace || [ "arm64" == "$(uname -m)" ]
+      command -v ltrace || [ "aarch64" == "$(uname -m)" ]
       command -v ld.lld >/dev/null || command -v lld >/dev/null
     '
   [ "$status" -eq 0 ]
