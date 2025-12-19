@@ -1,0 +1,3 @@
+base_image: node:alpine
+os_installer: distro/alpine-minimal/install.sh
+test_suite: minimal
