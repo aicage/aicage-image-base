@@ -61,6 +61,8 @@ done
 load_config_file
 
 BASE_IMAGE="$(get_base_field "${BASE_ALIAS}" base_image)"
+BASE_IMAGE_DISTRO="$(get_base_field "${BASE_ALIAS}" base_image_distro)"
+BASE_IMAGE_DESCRIPTION="$(get_base_field "${BASE_ALIAS}" base_image_description)"
 OS_INSTALLER="$(get_base_field "${BASE_ALIAS}" os_installer)"
 OS_INSTALLER_PATH="${ROOT_DIR}/scripts/os-installers/${OS_INSTALLER}"
 [[ -f "${OS_INSTALLER_PATH}" ]] || die "OS installer not found for '${BASE_ALIAS}': ${OS_INSTALLER}"
@@ -80,4 +82,7 @@ docker build \
   --tag "${VERSION_TAG}" \
   --tag "${LATEST_TAG}" \
   --label "org.opencontainers.image.description=Base image for aicage (${BASE_ALIAS})" \
+  --label "org.aicage.base=${BASE_ALIAS}" \
+  --label "org.aicage.base.distro=${BASE_IMAGE_DISTRO}" \
+  --label "org.aicage.base.description=${BASE_IMAGE_DESCRIPTION}" \
   .
