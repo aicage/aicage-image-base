@@ -1,7 +1,7 @@
 # aicage-image-base
 
 Base layers for the aicage agent images. Each base bundles an OS and common prerequisites; agent
-images in [Wuodan/aicage-image](https://github.com/Wuodan/aicage-image) build on top of these tags.
+images in [aicage/aicage-image](https://github.com/aicage/aicage-image) build on top of these tags.
 
 ## What’s included
 
@@ -10,9 +10,9 @@ images in [Wuodan/aicage-image](https://github.com/Wuodan/aicage-image) build on
 
 ## Tag format
 
-`${AICAGE_BASE_REPOSITORY:-wuodan/aicage-image-base}:<base>-<version>`
+`${AICAGE_BASE_REPOSITORY:-aicage/aicage-image-base}:<base>-<version>`
 
-- Example: `wuodan/aicage-image-base:ubuntu-latest`
+- Example: `aicage/aicage-image-base:ubuntu-latest`
 - `<base>-latest` tags are convenience aliases for the newest published version of a base.
 
 ## Contributing

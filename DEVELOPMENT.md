@@ -31,7 +31,7 @@ pip install -r requirements-dev.txt
 Setting from `config.yaml`:
 
 - `AICAGE_IMAGE_REGISTRY` (default `ghcr.io`)
-- `AICAGE_IMAGE_BASE_REPOSITORY` (default `wuodan/aicage-image-base`)
+- `AICAGE_IMAGE_BASE_REPOSITORY` (default `aicage/aicage-image-base`)
 - `AICAGE_VERSION` (default `dev`)
 Base aliases come from folders under `bases/`.
 
