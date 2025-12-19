@@ -20,11 +20,7 @@ dnf -y install \
   openssh-clients \
   p7zip \
   patch \
-  pipx \
   procps-ng \
-  python3 \
-  python3-pip \
-  python3-virtualenv \
   ripgrep \
   rsync \
   shadow-utils \

@@ -19,11 +19,6 @@ apt-get install -y --no-install-recommends \
   openssh-client \
   p7zip-full \
   patch \
-  pipx \
-  procps \
-  python3 \
-  python3-pip \
-  python3-venv \
   ripgrep \
   rsync \
   tar \

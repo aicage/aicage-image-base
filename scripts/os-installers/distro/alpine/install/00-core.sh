@@ -20,9 +20,6 @@ apk add --no-cache \
   p7zip \
   patch \
   procps \
-  py3-pip \
-  python3 \
-  py3-virtualenv \
   ripgrep \
   rsync \
   shadow \

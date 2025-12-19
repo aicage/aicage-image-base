@@ -125,7 +125,7 @@ jobs:
       - name: "Test: Run smoke suite on base image"
         run: |
           set -euo pipefail
-          scripts/test.sh --image "${VERSION_TAG}"
+          scripts/test.sh --image "${VERSION_TAG}" --base "${BASE_ALIAS}"
 
       - name: "Publish: Log in to Docker Hub"
         uses: docker/login-action@v3.6.0
@@ -200,7 +200,7 @@ jobs:
       - name: "Test: Run smoke suite on base image"
         run: |
           set -euo pipefail
-          scripts/test.sh --image "${VERSION_TAG}"
+          scripts/test.sh --image "${VERSION_TAG}" --base "${BASE_ALIAS}"
 
       - name: "Publish: Log in to Docker Hub"
         uses: docker/login-action@v3.6.0

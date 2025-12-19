@@ -17,5 +17,5 @@ for base_dir in "${ROOT_DIR}/bases"/*; do
   BASE_ALIAS="$(basename "${base_dir}")"
   IMAGE="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${AICAGE_VERSION}"
   echo "[base-test-all] Testing ${IMAGE}" >&2
-  "${ROOT_DIR}/scripts/test.sh" --image "${IMAGE}" -- "$@"
+  "${ROOT_DIR}/scripts/test.sh" --image "${IMAGE}" --base "${BASE_ALIAS}" -- "$@"
 done

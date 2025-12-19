@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SMOKE_DIR="${ROOT_DIR}/tests/smoke"
 IMAGE_REF=""
+BASE_ALIAS=""
 
 usage() {
   cat <<'USAGE'
@@ -37,6 +38,11 @@ while [[ $# -gt 0 ]]; do
       IMAGE_REF="$2"
       shift 2
       ;;
+    --base)
+      [[ $# -ge 2 ]] || die "--base requires a value"
+      BASE_ALIAS="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       ;;
@@ -47,6 +53,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "${IMAGE_REF}" ]] || { log "--image is required"; usage; }
+[[ -n "${BASE_ALIAS}" ]] || { log "--base is required"; usage; }
 
 if ! TEST_SUITE="$(get_base_field "${BASE_ALIAS}" test_suite)"; then
   TEST_SUITE="default"
@@ -55,4 +62,6 @@ fi
 [[ -d "${SMOKE_DIR}/${TEST_SUITE}" ]] || die "Test suite folder not found"
 
 log "Running base smoke test suite '${TEST_SUITE}' via bats"
-AICAGE_IMAGE_BASE_IMAGE="${IMAGE_REF}" bats "${SMOKE_DIR}/${TEST_SUITE}" "$@"
+AICAGE_IMAGE_BASE_IMAGE="${IMAGE_REF}" \
+  BASE_ALIAS="${BASE_ALIAS}" \
+  bats "${SMOKE_DIR}/${TEST_SUITE}" "$@"

@@ -13,6 +13,7 @@
       command -v file
       command -v less
       command -v 7z >/dev/null || command -v 7za >/dev/null
+      command -v git
       command -v tini
     '
   [ "$status" -eq 0 ]
