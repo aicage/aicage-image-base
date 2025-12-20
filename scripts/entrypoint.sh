@@ -10,8 +10,22 @@ if [[ "${TARGET_UID}" == "0" ]]; then
   exec "$@"
 fi
 
+existing_group_name="$(getent group "${TARGET_GID}" | cut -d: -f1 || true)"
+if [[ -n "${existing_group_name}" && "${existing_group_name}" != "${TARGET_USER}" ]]; then
+  if ! getent group "${TARGET_USER}" >/dev/null; then
+    groupmod -n "${TARGET_USER}" "${existing_group_name}"
+  fi
+fi
+
 if ! getent group "${TARGET_GID}" >/dev/null; then
   groupadd -g "${TARGET_GID}" "${TARGET_USER}"
+fi
+
+existing_user_name="$(getent passwd "${TARGET_UID}" | cut -d: -f1 || true)"
+if [[ -n "${existing_user_name}" && "${existing_user_name}" != "${TARGET_USER}" ]]; then
+  if ! getent passwd "${TARGET_USER}" >/dev/null; then
+    usermod -l "${TARGET_USER}" "${existing_user_name}"
+  fi
 fi
 
 if ! getent passwd "${TARGET_UID}" >/dev/null; then

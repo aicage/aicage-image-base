@@ -89,3 +89,39 @@
   [[ "$output" == *"gnupg-data"* ]]
   [[ "$output" == *"ssh-data"* ]]
 }
+
+@test "existing uid/gid are renamed to target user/group" {
+  run docker run --rm \
+    --entrypoint /bin/bash \
+    --env AICAGE_UID=1000 \
+    --env AICAGE_GID=1000 \
+    --env AICAGE_USER=hostuser \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      if getent passwd hostuser >/dev/null; then
+        echo "target user already exists"
+        exit 2
+      fi
+      if getent group hostuser >/dev/null; then
+        echo "target group already exists"
+        exit 2
+      fi
+      existing_group="$(getent group 1000 | cut -d: -f1 || true)"
+      if [[ -z "${existing_group}" ]]; then
+        groupadd -g 1000 ubuntu
+      fi
+      existing_user="$(getent passwd 1000 | cut -d: -f1 || true)"
+      if [[ -z "${existing_user}" ]]; then
+        useradd -m -u 1000 -g 1000 -s /bin/bash ubuntu
+      fi
+      /usr/local/bin/entrypoint.sh /bin/bash -c "set -euo pipefail; echo \"\$(id -un):\$(id -gn):\$(id -u):\$(id -g)\""
+    '
+  [ "$status" -eq 0 ]
+  result="$(printf '%s\n' "${output}" | tail -n 1)"
+  IFS=':' read -r user group uid gid <<<"${result}"
+  [ "${user}" = "hostuser" ]
+  [ "${group}" = "hostuser" ]
+  [ "${uid}" -eq 1000 ]
+  [ "${gid}" -eq 1000 ]
+}
