@@ -29,12 +29,12 @@ apt-get install -y --no-install-recommends \
 locale-gen en_US.UTF-8
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-helpers_dir="${script_dir}/helpers"
 generic_dir="${script_dir}/generic"
+distro_dir="${script_dir}/distro/debian/install"
 
 "${generic_dir}/install_node.sh"
 "${generic_dir}/install_python.sh"
-"${helpers_dir}/install_docker_debian.sh"
+"${distro_dir}/40-docker.sh"
 
 # cleanup
 apt-get clean

@@ -10,7 +10,3 @@ dnf -y install \
   docker-buildx-plugin \
   docker-ce-cli \
   docker-compose-plugin
-
-if ! getent group docker >/dev/null 2>&1; then
-  groupadd -r docker
-fi

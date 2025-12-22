@@ -11,7 +11,7 @@ if [[ "${TARGET_UID}" == "0" ]]; then
 fi
 
 existing_group_name="$(getent group "${TARGET_GID}" | cut -d: -f1 || true)"
-if [[ -n "${existing_group_name}" && "${existing_group_name}" != "${TARGET_USER}" ]]; then
+if [[ -n "${existing_group_name}" && "${existing_group_name}" != "${TARGET_USER}" && "${existing_group_name}" != "docker" ]]; then
   if ! getent group "${TARGET_USER}" >/dev/null; then
     groupmod -n "${TARGET_USER}" "${existing_group_name}"
   fi
@@ -37,8 +37,24 @@ TARGET_HOME="$(getent passwd "${TARGET_UID}" | cut -d: -f6)"
 TARGET_HOME="${TARGET_HOME:-/home/${TARGET_USER}}"
 
 # add user to docker group if present
-if getent group docker >/dev/null; then
-  usermod -aG docker "${TARGET_USER}"
+docker_sock="/var/run/docker.sock"
+docker_gid_group=""
+if [[ -S "${docker_sock}" ]]; then
+  docker_sock_gid="$(stat -c '%g' "${docker_sock}")"
+  existing_docker_gid_group="$(getent group "${docker_sock_gid}" | cut -d: -f1 || true)"
+  if [[ -n "${existing_docker_gid_group}" ]]; then
+    docker_gid_group="${existing_docker_gid_group}"
+  elif getent group docker >/dev/null; then
+    groupmod -g "${docker_sock_gid}" docker
+    docker_gid_group="docker"
+  else
+    groupadd -g "${docker_sock_gid}" docker
+    docker_gid_group="docker"
+  fi
+fi
+
+if [[ -n "${docker_gid_group}" ]]; then
+  usermod -aG "${docker_gid_group}" "${TARGET_USER}"
 fi
 
 # set up workspace folder

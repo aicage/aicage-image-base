@@ -2,6 +2,6 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-helpers_dir="${script_dir}/../../../helpers"
+generic_dir="${script_dir}/../../../generic"
 
-"${helpers_dir}/install_node_alpine.sh"
+"${generic_dir}/install_node_alpine.sh"
