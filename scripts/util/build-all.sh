@@ -52,5 +52,5 @@ for base_dir in "${ROOT_DIR}/bases"/*; do
   BASE_IMAGE="$(get_base_field "${BASE_ALIAS}" base_image)"
   INSTALLER="$(get_base_field "${BASE_ALIAS}" os_installer)"
   echo "[build-base-all] Building ${BASE_ALIAS} (upstream: ${BASE_IMAGE}" >&2
-  "${ROOT_DIR}/scripts/build.sh" --base "${BASE_ALIAS}" --version "${AICAGE_VERSION}"
+  "${ROOT_DIR}/scripts/util/build.sh" --base "${BASE_ALIAS}" --version "${AICAGE_VERSION}"
 done
