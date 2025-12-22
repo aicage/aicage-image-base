@@ -12,6 +12,16 @@ _die() {
   fi
 }
 
+# add retry and other params to reduce failure in pipelines
+curl_wrapper() {
+  curl -fsSL \
+    --retry 8 \
+    --retry-all-errors \
+    --retry-delay 2 \
+    --max-time 600 \
+    "$@"
+}
+
 load_config_file() {
   local config_file="${ROOT_DIR}/config.yaml"
   [[ -f "${config_file}" ]] || _die "Config file not found: ${config_file}"

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
+# shellcheck source=../../../../scripts/common.sh
+source "${ROOT_DIR}/scripts/common.sh"
+
 if ! command -v gosu >/dev/null 2>&1; then
   ARCH="$(uname -m)"
   case "$ARCH" in
@@ -12,8 +16,8 @@ if ! command -v gosu >/dev/null 2>&1; then
       ;;
   esac
 
-  GOSU_VERSION="$(curl -fsSL https://api.github.com/repos/tianon/gosu/releases/latest | jq -r '.tag_name')"
+  GOSU_VERSION="$(curl_wrapper https://api.github.com/repos/tianon/gosu/releases/latest | jq -r '.tag_name')"
   url="https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-${ARCH}"
-  curl -fsSL "${url}" -o /usr/local/bin/gosu
+  curl_wrapper "${url}" -o /usr/local/bin/gosu
   chmod +x /usr/local/bin/gosu
 fi

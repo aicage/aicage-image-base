@@ -5,7 +5,11 @@ if command -v gradle >/dev/null 2>&1; then
   exit 0
 fi
 
-gradle_json="$(curl -fsSL https://services.gradle.org/versions/current)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# shellcheck source=../../scripts/common.sh
+source "${ROOT_DIR}/scripts/common.sh"
+
+gradle_json="$(curl_wrapper https://services.gradle.org/versions/current)"
 gradle_version="$(echo "${gradle_json}" | jq -r '.version')"
 download_url="$(echo "${gradle_json}" | jq -r '.downloadUrl')"
 checksum_url="$(echo "${gradle_json}" | jq -r '.checksumUrl')"
@@ -24,10 +28,15 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "${tmp_dir}"' EXIT
 
 archive_path="${tmp_dir}/gradle.zip"
-curl -fsSL "${download_url}" -o "${archive_path}"
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# shellcheck source=../../scripts/common.sh
+source "${ROOT_DIR}/scripts/common.sh"
+
+curl_wrapper "${download_url}" -o "${archive_path}"
 
 if [[ -n "${checksum_url}" && "${checksum_url}" != "null" ]]; then
-  checksum="$(curl -fsSL "${checksum_url}")"
+  checksum="$(curl_wrapper "${checksum_url}")"
   echo "${checksum}  ${archive_path}" | sha256sum -c -
 fi
 

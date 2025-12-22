@@ -10,10 +10,14 @@ case "$(uname -m)" in
     ;;
 esac
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# shellcheck source=../../scripts/common.sh
+source "${ROOT_DIR}/scripts/common.sh"
+
 NODEJS_VERSION="${NODEJS_VERSION:-}"
 if [[ -z "${NODEJS_VERSION}" ]]; then
   NODEJS_VERSION="$(
-    curl -fsSL https://nodejs.org/dist/index.json \
+    curl_wrapper https://nodejs.org/dist/index.json \
       | jq -r 'map(select(.lts != false)) | .[0].version'
   )"
   NODEJS_VERSION="${NODEJS_VERSION#v}"
@@ -25,7 +29,7 @@ if [[ -z "${NODEJS_VERSION}" ]]; then
 fi
 
 if ! command -v node >/dev/null 2>&1; then
-  curl -fsSL "https://nodejs.org/dist/v${NODEJS_VERSION}/node-v${NODEJS_VERSION}-linux-${NODE_DIST_ARCH}.tar.xz" \
+  curl_wrapper "https://nodejs.org/dist/v${NODEJS_VERSION}/node-v${NODEJS_VERSION}-linux-${NODE_DIST_ARCH}.tar.xz" \
     | tar -xJ -C /usr/local --strip-components=1
 fi
 

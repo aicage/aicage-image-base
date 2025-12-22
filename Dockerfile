@@ -21,8 +21,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH="/opt/pipx/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin" \
     NPM_CONFIG_PREFIX=/usr/local
 
-RUN --mount=type=bind,source=scripts/os-installers,target=/tmp/os-installers,readonly \
-    /tmp/os-installers/${OS_INSTALLER}
+RUN --mount=type=bind,source=scripts,target=/tmp/aicage/scripts,readonly \
+    /tmp/aicage/scripts/os-installers/${OS_INSTALLER}
 
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 

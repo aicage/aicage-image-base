@@ -8,7 +8,11 @@ fi
 export RUSTUP_HOME=/usr/local/rustup
 export CARGO_HOME=/usr/local/cargo
 
-curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --no-modify-path
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# shellcheck source=../../scripts/common.sh
+source "${ROOT_DIR}/scripts/common.sh"
+
+curl_wrapper https://sh.rustup.rs | sh -s -- -y --profile minimal --no-modify-path
 
 PATH="${CARGO_HOME}/bin:${PATH}" rustup component add rustfmt clippy
 

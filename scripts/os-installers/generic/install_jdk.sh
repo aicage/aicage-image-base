@@ -20,8 +20,12 @@ case "$(uname -m)" in
     ;;
 esac
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# shellcheck source=../../scripts/common.sh
+source "${ROOT_DIR}/scripts/common.sh"
+
 jdk_version="$(
-  curl -fsSL https://api.adoptium.net/v3/info/available_releases \
+  curl_wrapper https://api.adoptium.net/v3/info/available_releases \
     | jq -r '.most_recent_feature_release'
 )"
 
@@ -31,7 +35,7 @@ if [[ -z "${jdk_version}" || "${jdk_version}" == "null" ]]; then
 fi
 
 jdk_json="$(
-  curl -fsSL \
+  curl_wrapper \
     "https://api.adoptium.net/v3/assets/feature_releases/${jdk_version}/ga?architecture=${JDK_ARCH}&heap_size=normal&image_type=jdk&jvm_impl=hotspot&os=${jdk_os}&vendor=eclipse"
 )"
 
@@ -47,7 +51,7 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "${tmp_dir}"' EXIT
 
 archive_path="${tmp_dir}/jdk.tar.gz"
-curl -fsSL "${jdk_url}" -o "${archive_path}"
+curl_wrapper "${jdk_url}" -o "${archive_path}"
 
 if [[ -n "${jdk_checksum}" && "${jdk_checksum}" != "null" ]]; then
   echo "${jdk_checksum}  ${archive_path}" | sha256sum -c -

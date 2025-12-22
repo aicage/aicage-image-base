@@ -5,7 +5,12 @@ export GNUPGHOME="$(mktemp -d)"
 
 # keyring
 install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/debian/gpg \
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
+# shellcheck source=../../../../scripts/common.sh
+source "${ROOT_DIR}/scripts/common.sh"
+
+curl_wrapper https://download.docker.com/linux/debian/gpg \
   | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 chmod a+r /etc/apt/keyrings/docker.gpg
 
