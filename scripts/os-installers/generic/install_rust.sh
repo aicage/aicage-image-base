@@ -20,6 +20,12 @@ for bin in "${CARGO_HOME}/bin/"*; do
   ln -sf "${bin}" "/usr/local/bin/$(basename "${bin}")"
 done
 
+install -d /usr/share/licenses/rustup
+curl_wrapper https://raw.githubusercontent.com/rust-lang/rustup/master/LICENSE-APACHE \
+  -o /usr/share/licenses/rustup/LICENSE-APACHE
+curl_wrapper https://raw.githubusercontent.com/rust-lang/rustup/master/LICENSE-MIT \
+  -o /usr/share/licenses/rustup/LICENSE-MIT
+
 cat > /etc/profile.d/rust.sh <<'RUST'
 export RUSTUP_HOME=/usr/local/rustup
 export CARGO_HOME=/usr/local/cargo
