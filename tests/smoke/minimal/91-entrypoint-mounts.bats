@@ -1,8 +1,25 @@
 #!/usr/bin/env bats
 
+cleanup_mount_dir() {
+  local dir="$1"
+  docker run --rm \
+    -v "${dir}:/cleanup" \
+    --entrypoint /bin/bash \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      for entry in /cleanup/.* /cleanup/*; do
+        name="$(basename "$entry")"
+        [ "$name" = "." ] || [ "$name" = ".." ] && continue
+        rm -rf "$entry"
+      done
+    ' >/dev/null 2>&1 || true
+  rm -rf "${dir}" >/dev/null 2>&1 || true
+}
+
 @test "gitconfig mount is symlinked into home and git config" {
   host_dir="$(mktemp -d)"
-  trap 'rm -rf "${host_dir}"' RETURN
+  trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
   printf '[user]\n  name = example\n' >"${host_dir}/gitconfig"
   chmod 644 "${host_dir}/gitconfig"
@@ -27,7 +44,7 @@
 
 @test "gnupg and ssh mounts are symlinked into home" {
   host_dir="$(mktemp -d)"
-  trap 'rm -rf "${host_dir}"' RETURN
+  trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
   mkdir -p "${host_dir}/gnupg" "${host_dir}/ssh"
   chmod 755 "${host_dir}/gnupg" "${host_dir}/ssh"
@@ -53,4 +70,46 @@
   [ "$status" -eq 0 ]
   [[ "$output" == *"gnupg-data"* ]]
   [[ "$output" == *"ssh-data"* ]]
+}
+
+@test "skel is not copied when /home is a mountpoint" {
+  host_dir="$(mktemp -d)"
+  trap 'cleanup_mount_dir "${host_dir}"' RETURN
+  mkdir -p "${host_dir}/demo"
+  chmod 755 "${host_dir}" "${host_dir}/demo"
+
+  run docker run --rm \
+    -v "${host_dir}:/home" \
+    --entrypoint /bin/bash \
+    --env AICAGE_UID=1234 \
+    --env AICAGE_GID=2345 \
+    --env AICAGE_USER=demo \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      mkdir -p /etc/skel
+      printf "skel\n" >/etc/skel/.skel_test
+      /usr/local/bin/entrypoint.sh /bin/bash -c "set -euo pipefail; test ! -e \"\$HOME/.skel_test\""
+    '
+  [ "$status" -eq 0 ]
+}
+
+@test "skel is copied when home exists and is not a mountpoint" {
+  host_dir="$(mktemp -d)"
+  trap 'cleanup_mount_dir "${host_dir}"' RETURN
+
+  run docker run --rm \
+    -v "${host_dir}:/home/demo/work" \
+    --entrypoint /bin/bash \
+    --env AICAGE_UID=1234 \
+    --env AICAGE_GID=2345 \
+    --env AICAGE_USER=demo \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      mkdir -p /etc/skel
+      printf "skel\n" >/etc/skel/.skel_test
+      /usr/local/bin/entrypoint.sh /bin/bash -c "set -euo pipefail; test -e \"\$HOME/.skel_test\""
+    '
+  [ "$status" -eq 0 ]
 }

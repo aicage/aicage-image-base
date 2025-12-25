@@ -5,6 +5,44 @@ if [[ -z "${AICAGE_WORKSPACE:-}" ]]; then
   AICAGE_WORKSPACE="/workspace"
 fi
 
+is_mountpoint() {
+  local path="$1"
+  local parent
+  parent="$(dirname "$path")"
+  # different device id than parent ⇒ mount (bind mount or volume)
+  [ "$(stat -c %d "$path" 2>/dev/null)" != "$(stat -c %d "$parent" 2>/dev/null)" ]
+}
+
+copy_skel_if_safe() {
+  local home_dir="$1"
+  local uid="$2"
+  local gid="$3"
+  local skel_dir="/etc/skel"
+
+  # do nothing if home is a mount
+  if is_mountpoint "$home_dir"; then
+    return 0
+  fi
+
+  # do nothing if skel missing or empty
+  [ -d "$skel_dir" ] || return 0
+  [ -n "$(ls -A "$skel_dir" 2>/dev/null)" ] || return 0
+
+  for src in "$skel_dir"/.* "$skel_dir"/*; do
+    local name dst
+    [ -e "$src" ] || continue
+    name="$(basename "$src")"
+    [ "$name" = "." ] || [ "$name" = ".." ] && continue
+
+    dst="$home_dir/$name"
+    if [ ! -e "$dst" ]; then
+      cp -a "$src" "$home_dir/"
+      # chown only what we copied
+      chown -hR "$uid:$gid" "$dst" 2>/dev/null || chown -R "$uid:$gid" "$dst"
+    fi
+  done
+}
+
 # set up user and group
 TARGET_UID="${AICAGE_UID:-${UID:-1000}}"
 TARGET_GID="${AICAGE_GID:-${GID:-1000}}"
@@ -32,13 +70,43 @@ if [[ -n "${existing_user_name}" && "${existing_user_name}" != "${TARGET_USER}" 
   fi
 fi
 
+CREATE_HOME="--no-create-home"
+COPY_SKEL="false"
+home_parent="/home"
+home_dir="/home/${TARGET_USER}"
+home_parent_is_mount="false"
+home_dir_is_mount="false"
+
+if [ -d "${home_parent}" ] && is_mountpoint "${home_parent}"; then
+  home_parent_is_mount="true"
+fi
+
+if [ -d "${home_dir}" ] && is_mountpoint "${home_dir}"; then
+  home_dir_is_mount="true"
+fi
+
+if [[ "${home_parent_is_mount}" == "true" || "${home_dir_is_mount}" == "true" ]]; then
+  CREATE_HOME="--no-create-home"
+  COPY_SKEL="false"
+elif [ -d "${home_dir}" ]; then
+  CREATE_HOME="--no-create-home"
+  COPY_SKEL="true"
+else
+  CREATE_HOME="--create-home"
+  COPY_SKEL="false"
+fi
+
 if ! getent passwd "${TARGET_UID}" >/dev/null; then
-  useradd -m -u "${TARGET_UID}" -g "${TARGET_GID}" -s /bin/bash "${TARGET_USER}"
+  useradd "${CREATE_HOME}" -u "${TARGET_UID}" -g "${TARGET_GID}" -s /bin/bash "${TARGET_USER}"
 fi
 
 TARGET_USER="$(getent passwd "${TARGET_UID}" | cut -d: -f1)"
 TARGET_HOME="$(getent passwd "${TARGET_UID}" | cut -d: -f6)"
 TARGET_HOME="${TARGET_HOME:-/home/${TARGET_USER}}"
+
+if [[ "${COPY_SKEL}" == "true" ]]; then
+  copy_skel_if_safe "${TARGET_HOME}" "${TARGET_UID}" "${TARGET_GID}"
+fi
 
 # add user to docker group if present
 docker_sock="/var/run/docker.sock"
@@ -64,7 +132,11 @@ fi
 # set up workspace folder
 mkdir -p "${AICAGE_WORKSPACE}"
 chown "${TARGET_UID}:${TARGET_GID}" "${AICAGE_WORKSPACE}"
-chown -R "${TARGET_UID}:${TARGET_GID}" "${TARGET_HOME}"
+if [ -d "${TARGET_HOME}" ]; then
+  if ! is_mountpoint "/home" && ! is_mountpoint "${TARGET_HOME}"; then
+    chown "${TARGET_UID}:${TARGET_GID}" "${TARGET_HOME}"
+  fi
+fi
 
 TOOL_MOUNT="/aicage/tool-config"
 if [[ -n "${AICAGE_TOOL_PATH:-}" ]]; then
