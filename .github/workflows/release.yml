@@ -20,6 +20,10 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: "Test: Remove Python yq and keep using Go yq"
+        run: |
+          python -m pip uninstall -y yq
+
       - name: "Test: Install lint deps"
         run: |
           python -m pip install --upgrade pip
