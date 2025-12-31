@@ -3,7 +3,7 @@
 ## Summary
 
 - Scope: aicage-image-base build scripts and Dockerfile in this repo.
-- Base images: ubuntu, debian, fedora, alpine, alpine-minimal, node (node:lts-slim), act, openhands.
+- Base images: ubuntu, debian, fedora, alpine, alpine-minimal, node (node:lts-slim), act.
 - Package managers: apt (Debian/Ubuntu), dnf (Fedora), apk (Alpine).
 - No build steps delete `/usr/share/doc` or `/usr/share/licenses`.
 
