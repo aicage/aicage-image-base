@@ -186,6 +186,11 @@ jobs:
             org.aicage.base.distro=${{ env.BASE_IMAGE_DISTRO }}
             org.aicage.base.description=${{ env.BASE_IMAGE_DESCRIPTION }}
 
+      - name: "Test: Pull base image for local tests"
+        run: |
+          set -euo pipefail
+          docker pull "${IMAGE_NAME}@${{ steps.build_image.outputs.digest }}"
+
       - name: "Test: Setup BATS testing framework"
         uses: mig4/setup-bats@v1.2.0
 
