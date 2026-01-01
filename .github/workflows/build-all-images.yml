@@ -2,11 +2,6 @@ name: Build Base Images
 run-name: Build base images (${{ github.ref_name }})
 
 "on":
-  workflow_run:
-    workflows:
-      - Release
-    types:
-      - completed
   schedule:
     - cron: "0 2 * * 2"
   workflow_dispatch:
@@ -15,6 +10,9 @@ run-name: Build base images (${{ github.ref_name }})
         description: Base alias to build (matches bases/<alias>)
         required: false
         type: string
+  push:
+    tags:
+      - "*"
 
 concurrency:
   group: build-base-images-${{ github.run_id }}
@@ -29,28 +27,29 @@ jobs:
 
   resolve-ref:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     outputs:
       GIT_REF: ${{ steps.ref.outputs.GIT_REF }}
     steps:
-      - name: Checkout
-        if: ${{ github.event_name == 'workflow_run' }}
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
       - name: Resolve git ref
         id: ref
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
-            git fetch --tags --force
-            tags="$(git tag --points-at "${GITHUB_SHA}")"
-            if [[ -z "${tags}" ]]; then
-              echo "No tag found for ${GITHUB_SHA}" >&2
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+            GIT_REF="$(
+              curl \
+                -fsSL \
+                --retry 8 \
+                --retry-all-errors \
+                --retry-delay 2 \
+                --max-time 300 \
+                -H "Accept: application/vnd.github+json" \
+                https://api.github.com/repos/aicage/aicage-image-base/releases/latest \
+              | jq -r '.tag_name'
+            )"
+            if [[ -z "${GIT_REF}" ]]; then
+              echo "Git tag is empty for latest release" >&2
               exit 1
             fi
-            GIT_REF="$(printf '%s\n' "${tags}" | tail -n 1)"
           else
             GIT_REF="${GITHUB_REF_NAME}"
           fi

@@ -1,19 +1,39 @@
 name: Release
 
 "on":
-  push:
-    tags:
-      - "*"
+  workflow_run:
+    workflows:
+      - Build Base Images
+    types:
+      - completed
 
 permissions:
   contents: write
 
 jobs:
   release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Resolve release tag
+        id: resolve
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          tags="$(git tag --points-at "${GITHUB_SHA}")"
+          if [[ -z "${tags}" ]]; then
+            echo "No tag found for ${GITHUB_SHA}" >&2
+            exit 1
+          fi
+          tag="$(printf '%s\n' "${tags}" | tail -n 1)"
+          {
+            echo "AICAGE_VERSION=${tag}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: "Test: Set up Python"
         uses: actions/setup-python@v6.1.0
@@ -50,6 +70,7 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ github.ref_name }}
+          name: Release ${{ steps.resolve.outputs.AICAGE_VERSION }}
+          tag_name: ${{ steps.resolve.outputs.AICAGE_VERSION }}
           generate_release_notes: true
           files: bases.tar.gz
