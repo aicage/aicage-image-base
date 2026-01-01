@@ -116,14 +116,13 @@ jobs:
         id: set-matrix
         run: |
           set -euo pipefail
-          base_input="${INPUT_BASE}"
           bases=()
-          if [[ -n "${base_input}" ]]; then
-            if [[ ! -d "bases/${base_input}" ]]; then
-              echo "Base '${base_input}' not found under bases/" >&2
+          if [[ -n "${INPUT_BASE}" ]]; then
+            if [[ ! -d "bases/${INPUT_BASE}" ]]; then
+              echo "Base '${INPUT_BASE}' not found under bases/" >&2
               exit 1
             fi
-            bases=("${base_input}")
+            bases=("${INPUT_BASE}")
           else
             mapfile -t bases < <(ls -1 bases)
           fi
