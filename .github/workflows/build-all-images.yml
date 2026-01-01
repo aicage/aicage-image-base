@@ -52,21 +52,7 @@ jobs:
             fi
             GIT_REF="$(printf '%s\n' "${tags}" | tail -n 1)"
           else
-            GIT_REF="$(
-              curl \
-                -fsSL \
-                --retry 8 \
-                --retry-all-errors \
-                --retry-delay 2 \
-                --max-time 300 \
-                -H "Accept: application/vnd.github+json" \
-                https://api.github.com/repos/aicage/aicage-image-base/releases/latest \
-              | jq -r '.tag_name'
-            )"
-            if [[ -z "${GIT_REF}" ]]; then
-              echo "Git tag is empty for latest release" >&2
-              exit 1
-            fi
+            GIT_REF="${GITHUB_REF_NAME}"
           fi
           {
             echo "GIT_REF=${GIT_REF}"
