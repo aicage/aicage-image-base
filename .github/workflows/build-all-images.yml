@@ -242,8 +242,6 @@ jobs:
           context: .
           push: true
           provenance: true
-          cache-from: type=gha,scope=${{ env.BASE_ALIAS }}-${{ env.ARCH_SUFFIX }}
-          cache-to: type=gha,mode=max,scope=${{ env.BASE_ALIAS }}-${{ env.ARCH_SUFFIX }}
           build-args: |
             ROOT_IMAGE=${{ env.ROOT_IMAGE }}
             OS_INSTALLER=${{ env.OS_INSTALLER }}
