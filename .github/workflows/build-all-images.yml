@@ -237,7 +237,8 @@ jobs:
         with:
           context: .
           push: true
-          provenance: true
+          provenance: mode=max
+          sbom: true
           build-args: |
             ROOT_IMAGE=${{ env.ROOT_IMAGE }}
             OS_INSTALLER=${{ env.OS_INSTALLER }}
@@ -245,6 +246,34 @@ jobs:
             ${{ env.IMAGE_TEST_TAG }}
           labels: |
             org.opencontainers.image.description=Base image for aicage (${{ env.BASE_ALIAS }})
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.0.0
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@v1
+
+      - name: Verify image provenance (predicate + subject)
+        run: |
+          set -euo pipefail
+          digest="${{ steps.build_image.outputs.digest }}"
+          ADIGEST="$(docker buildx imagetools inspect --raw "${IMAGE_NAME}@${digest}" \
+            | jq -r '.manifests[]
+              | select(.annotations."vnd.docker.reference.type"=="attestation-manifest")
+              | .digest' | head -n1)"
+          test -n "$ADIGEST"
+          att_manifest="$(oras manifest fetch --output - "${IMAGE_NAME}@${ADIGEST}")"
+          layer_digest="$(printf '%s' "$att_manifest" | jq -r '.layers[]
+            | select(.annotations."in-toto.io/predicate-type"
+              | startswith("https://slsa.dev/provenance/"))
+            | .digest' | head -n1)"
+          test -n "$layer_digest"
+          oras blob fetch --output attestation.json "${IMAGE_NAME}@${layer_digest}"
+          jq -e --arg d "${digest#sha256:}" '
+            (.predicateType | startswith("https://slsa.dev/provenance/"))
+            and
+            (.subject[]? | select(.digest.sha256 == $d))
+          ' attestation.json >/dev/null
 
       - name: "Test: Pull base image for local tests"
         run: |
@@ -260,9 +289,6 @@ jobs:
           scripts/test.sh \
             --image "${IMAGE_NAME}@${{ steps.build_image.outputs.digest }}" \
             --base "${BASE_ALIAS}"
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.0.0
 
       - name: Sign image with cosign
         run: |
@@ -286,9 +312,6 @@ jobs:
             --tag "${IMAGE_VERSION_TAG}" \
             --tag "${IMAGE_LATEST_TAG}" \
             "${IMAGE_NAME}@${{ steps.build_image.outputs.digest }}"
-
-      - name: Install ORAS
-        uses: oras-project/setup-oras@v1
 
       - name: Delete test image tag
         run: |
@@ -387,8 +410,43 @@ jobs:
           set -euo pipefail
           docker buildx imagetools create \
               --tag "${MANIFEST_TEST_TAG}" \
-              "${AICAGE_IMAGE_DIGEST_amd64}" \
-              "${AICAGE_IMAGE_DIGEST_arm64}"
+              "${IMAGE_NAME}@${AICAGE_IMAGE_DIGEST_amd64}" \
+              "${IMAGE_NAME}@${AICAGE_IMAGE_DIGEST_arm64}"
+
+      - name: Resolve manifest digest
+        id: manifest_digest
+        run: |
+          set -euo pipefail
+          DIGEST="$(docker buildx imagetools inspect "${MANIFEST_TEST_TAG}" \
+            | sed -n 's/^Digest:[[:space:]]*//p' | head -n1)"
+          test -n "$DIGEST"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@v1
+
+      - name: Verify manifest images have provenance (predicate + subject)
+        run: |
+          set -euo pipefail
+          for digest in "${AICAGE_IMAGE_DIGEST_amd64}" "${AICAGE_IMAGE_DIGEST_arm64}"; do
+            ADIGEST="$(docker buildx imagetools inspect --raw "${IMAGE_NAME}@${digest}" \
+              | jq -r '.manifests[]
+                | select(.annotations."vnd.docker.reference.type"=="attestation-manifest")
+                | .digest' | head -n1)"
+            test -n "$ADIGEST"
+            att_manifest="$(oras manifest fetch --output - "${IMAGE_NAME}@${ADIGEST}")"
+            layer_digest="$(printf '%s' "$att_manifest" | jq -r '.layers[]
+              | select(.annotations."in-toto.io/predicate-type"
+                | startswith("https://slsa.dev/provenance/"))
+              | .digest' | head -n1)"
+            test -n "$layer_digest"
+            oras blob fetch --output attestation.json "${IMAGE_NAME}@${layer_digest}"
+            jq -e --arg d "${digest#sha256:}" '
+              (.predicateType | startswith("https://slsa.dev/provenance/"))
+              and
+              (.subject[]? | select(.digest.sha256 == $d))
+            ' attestation.json >/dev/null
+          done
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v4.0.0
@@ -397,7 +455,7 @@ jobs:
         run: |
           set -euo pipefail
           cosign sign --yes \
-            "${MANIFEST_TEST_TAG}"
+            "${IMAGE_NAME}@${{ steps.manifest_digest.outputs.digest }}"
 
       - name: "Test: Verify multi-arch manifest signature"
         run: |
@@ -406,7 +464,7 @@ jobs:
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             --certificate-identity-regexp \
               "^https://github.com/${GITHUB_REPOSITORY}/.github/workflows/.*@refs/.*/.*$" \
-            "${MANIFEST_TEST_TAG}"
+            "${IMAGE_NAME}@${{ steps.manifest_digest.outputs.digest }}"
 
       - name: "Publish: Set tags for multi-arch manifest"
         run: |
@@ -415,9 +473,6 @@ jobs:
             --tag "${MANIFEST_VERSION_TAG}" \
             --tag "${MANIFEST_LATEST_TAG}" \
             "${MANIFEST_TEST_TAG}"
-
-      - name: Install ORAS
-        uses: oras-project/setup-oras@v1
 
       - name: Delete test image tag
         run: |
