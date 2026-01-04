@@ -269,11 +269,28 @@ jobs:
             | .digest' | head -n1)"
           test -n "$layer_digest"
           oras blob fetch --output attestation.json "${IMAGE_NAME}@${layer_digest}"
-          jq -e --arg d "${digest#sha256:}" '
-            (.predicateType | startswith("https://slsa.dev/provenance/"))
-            and
-            (.subject[]? | select(.digest.sha256 == $d))
-          ' attestation.json >/dev/null
+          python3 - "${digest}" <<'PY'
+          import base64
+          import gzip
+          import json
+          import sys
+
+          path = "attestation.json"
+          raw = open(path, "rb").read()
+          if raw[:2] == b"\x1f\x8b":
+            raw = gzip.decompress(raw)
+          obj = json.loads(raw)
+          if "payload" in obj and isinstance(obj.get("payload"), str):
+            raw_payload = base64.b64decode(obj["payload"])
+            obj = json.loads(raw_payload)
+          pred = obj.get("predicateType", "")
+          if not pred.startswith("https://slsa.dev/provenance/"):
+            sys.exit(1)
+          digest = sys.argv[1].removeprefix("sha256:")
+          subjects = obj.get("subject") or []
+          if not any(s.get("digest", {}).get("sha256") == digest for s in subjects):
+            sys.exit(1)
+          PY
 
       - name: "Test: Pull base image for local tests"
         run: |
@@ -441,11 +458,28 @@ jobs:
               | .digest' | head -n1)"
             test -n "$layer_digest"
             oras blob fetch --output attestation.json "${IMAGE_NAME}@${layer_digest}"
-            jq -e --arg d "${digest#sha256:}" '
-              (.predicateType | startswith("https://slsa.dev/provenance/"))
-              and
-              (.subject[]? | select(.digest.sha256 == $d))
-            ' attestation.json >/dev/null
+            python3 - "${digest}" <<'PY'
+            import base64
+            import gzip
+            import json
+            import sys
+
+            path = "attestation.json"
+            raw = open(path, "rb").read()
+            if raw[:2] == b"\x1f\x8b":
+              raw = gzip.decompress(raw)
+            obj = json.loads(raw)
+            if "payload" in obj and isinstance(obj.get("payload"), str):
+              raw_payload = base64.b64decode(obj["payload"])
+              obj = json.loads(raw_payload)
+            pred = obj.get("predicateType", "")
+            if not pred.startswith("https://slsa.dev/provenance/"):
+              sys.exit(1)
+            digest = sys.argv[1].removeprefix("sha256:")
+            subjects = obj.get("subject") or []
+            if not any(s.get("digest", {}).get("sha256") == digest for s in subjects):
+              sys.exit(1)
+            PY
           done
 
       - name: Install Cosign
