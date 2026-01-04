@@ -257,6 +257,9 @@ jobs:
         run: |
           set -euo pipefail
           digest="${{ steps.build_image.outputs.digest }}"
+          expected_digest="$(docker buildx imagetools inspect "${IMAGE_TEST_TAG}" \
+            | sed -n 's/^Digest:[[:space:]]*//p' | head -n1)"
+          test -n "${expected_digest}"
           ADIGEST="$(docker buildx imagetools inspect --raw "${IMAGE_NAME}@${digest}" \
             | jq -r '.manifests[]
               | select(.annotations."vnd.docker.reference.type"=="attestation-manifest")
@@ -283,7 +286,7 @@ jobs:
           else
             statement="${att_raw}"
           fi
-          d="${digest#sha256:}"
+          d="${expected_digest#sha256:}"
           printf '%s' "${statement}" | jq -e --arg d "${d}" '
             (.predicateType | startswith("https://slsa.dev/provenance/"))
             and
