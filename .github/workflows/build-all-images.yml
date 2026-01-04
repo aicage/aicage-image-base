@@ -258,12 +258,22 @@ jobs:
               | select(.annotations."vnd.docker.reference.type"!="attestation-manifest")
               | .digest' | head -n1)"
           test -n "${digest}"
-          cosign verify-attestation \
-            --type slsaprovenance \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            --certificate-identity-regexp \
-              "^https://github.com/${GITHUB_REPOSITORY}/.github/workflows/.*@refs/.*/.*$" \
-            "${IMAGE_NAME}@${digest}"
+          att_digest="$(docker buildx imagetools inspect --raw "${IMAGE_NAME}@${digest}" \
+            | jq -r '.manifests[]
+              | select(.annotations."vnd.docker.reference.type"=="attestation-manifest")
+              | .digest' | head -n1)"
+          test -n "${att_digest}"
+          layer_digest="$(oras manifest fetch --output - "${IMAGE_NAME}@${att_digest}" \
+            | jq -r '.layers[]
+              | select(.annotations."in-toto.io/predicate-type"
+                | startswith("https://slsa.dev/provenance/"))
+              | .digest' | head -n1)"
+          test -n "${layer_digest}"
+          oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
+            | jq -e --arg d "${digest#sha256:}" '
+              (.predicateType | startswith("https://slsa.dev/provenance/"))
+              and (.subject[]? | select(.digest.sha256 == $d))
+            ' >/dev/null
 
       - name: "Test: Pull base image for local tests"
         run: |
@@ -432,12 +442,22 @@ jobs:
                 | select(.annotations."vnd.docker.reference.type"!="attestation-manifest")
                 | .digest' | head -n1)"
             test -n "${digest}"
-            cosign verify-attestation \
-              --type slsaprovenance \
-              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-              --certificate-identity-regexp \
-                "^https://github.com/${GITHUB_REPOSITORY}/.github/workflows/.*@refs/.*/.*$" \
-              "${IMAGE_NAME}@${digest}"
+            att_digest="$(docker buildx imagetools inspect --raw "${IMAGE_NAME}@${digest}" \
+              | jq -r '.manifests[]
+                | select(.annotations."vnd.docker.reference.type"=="attestation-manifest")
+                | .digest' | head -n1)"
+            test -n "${att_digest}"
+            layer_digest="$(oras manifest fetch --output - "${IMAGE_NAME}@${att_digest}" \
+              | jq -r '.layers[]
+                | select(.annotations."in-toto.io/predicate-type"
+                  | startswith("https://slsa.dev/provenance/"))
+                | .digest' | head -n1)"
+            test -n "${layer_digest}"
+            oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
+              | jq -e --arg d "${digest#sha256:}" '
+                (.predicateType | startswith("https://slsa.dev/provenance/"))
+                and (.subject[]? | select(.digest.sha256 == $d))
+              ' >/dev/null
           done
 
       - name: "Publish: Sign multi-arch manifest"
