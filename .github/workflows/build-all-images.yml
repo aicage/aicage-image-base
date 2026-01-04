@@ -271,9 +271,11 @@ jobs:
           test -n "${layer_digest}"
           payload="$(oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
             | { gzip -dc 2>/dev/null || cat; })"
-          printf 'payload_b64_start\n'
-          printf '%s' "${payload}" | base64 -w0 | fold -w 200
-          printf '\npayload_b64_end\n'
+          payload_len="$(printf '%s' "${payload}" | wc -c | tr -d ' ')"
+          printf 'payload_len=%s\n' "${payload_len}"
+          printf 'payload_b64_head='
+          printf '%s' "${payload}" | head -c 2000 | base64 -w0
+          printf '\n'
           printf '%s' "${payload}" | jq -e --arg d "${digest#sha256:}" '
             (if type=="object" and has("payload")
              then .payload | @base64d | fromjson
@@ -463,9 +465,11 @@ jobs:
             test -n "${layer_digest}"
             payload="$(oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
               | { gzip -dc 2>/dev/null || cat; })"
-            printf 'payload_b64_start\n'
-            printf '%s' "${payload}" | base64 -w0 | fold -w 200
-            printf '\npayload_b64_end\n'
+            payload_len="$(printf '%s' "${payload}" | wc -c | tr -d ' ')"
+            printf 'payload_len=%s\n' "${payload_len}"
+            printf 'payload_b64_head='
+            printf '%s' "${payload}" | head -c 2000 | base64 -w0
+            printf '\n'
             printf '%s' "${payload}" | jq -e --arg d "${digest#sha256:}" '
               (if type=="object" and has("payload")
                then .payload | @base64d | fromjson
