@@ -269,17 +269,16 @@ jobs:
                 | startswith("https://slsa.dev/provenance/"))
               | .digest' | head -n1)"
           test -n "${layer_digest}"
-          payload="$(oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
-            | { gzip -dc 2>/dev/null || cat; })"
-          if ! printf '%s' "${payload}" | jq -e --arg d "${digest#sha256:}" '
-            if has("payload") then .payload | @base64d | fromjson else . end
-            | (.predicateType | startswith("https://slsa.dev/provenance/"))
-            and ((.subject // []) | map(.digest.sha256) | index($d))
-          ' >/dev/null; then
-            printf '%s' "${payload}" | head -c 400 >&2
-            printf '\n' >&2
-            exit 1
-          fi
+          oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
+            | { gzip -dc 2>/dev/null || cat; } \
+            | jq -e --arg d "${digest#sha256:}" '
+              (if type=="object" and has("payload")
+               then .payload | @base64d | fromjson
+               else . end)
+              | select(type=="object")
+              | (.predicateType | startswith("https://slsa.dev/provenance/"))
+              and (.subject[]?.digest.sha256 == $d)
+            ' >/dev/null
 
       - name: "Test: Pull base image for local tests"
         run: |
@@ -459,17 +458,16 @@ jobs:
                   | startswith("https://slsa.dev/provenance/"))
                 | .digest' | head -n1)"
             test -n "${layer_digest}"
-            payload="$(oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
-              | { gzip -dc 2>/dev/null || cat; })"
-            if ! printf '%s' "${payload}" | jq -e --arg d "${digest#sha256:}" '
-              if has("payload") then .payload | @base64d | fromjson else . end
-              | (.predicateType | startswith("https://slsa.dev/provenance/"))
-              and ((.subject // []) | map(.digest.sha256) | index($d))
-            ' >/dev/null; then
-              printf '%s' "${payload}" | head -c 400 >&2
-              printf '\n' >&2
-              exit 1
-            fi
+            oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
+              | { gzip -dc 2>/dev/null || cat; } \
+              | jq -e --arg d "${digest#sha256:}" '
+                (if type=="object" and has("payload")
+                 then .payload | @base64d | fromjson
+                 else . end)
+                | select(type=="object")
+                | (.predicateType | startswith("https://slsa.dev/provenance/"))
+                and (.subject[]?.digest.sha256 == $d)
+              ' >/dev/null
           done
 
       - name: "Publish: Sign multi-arch manifest"
