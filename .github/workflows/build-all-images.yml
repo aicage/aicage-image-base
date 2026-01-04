@@ -253,13 +253,9 @@ jobs:
       - name: Verify image provenance (predicate + subject)
         run: |
           set -euo pipefail
-          digest="$(docker buildx imagetools inspect --raw "${IMAGE_TEST_TAG}" \
-            | jq -r '.manifests[]
-              | select(.annotations."vnd.docker.reference.type"!="attestation-manifest")
-              | .digest' | head -n1)"
-          test -n "${digest}"
-          att_digest="$(docker buildx imagetools inspect --raw "${IMAGE_NAME}@${digest}" \
-            | jq -r '.manifests[]
+          digest="${{ steps.build_image.outputs.digest }}"
+          att_digest="$(oras discover --output json "${IMAGE_NAME}@${digest}" \
+            | jq -r '.referrers[]
               | select(.annotations."vnd.docker.reference.type"=="attestation-manifest")
               | .digest' | head -n1)"
           test -n "${att_digest}"
@@ -269,21 +265,13 @@ jobs:
                 | startswith("https://slsa.dev/provenance/"))
               | .digest' | head -n1)"
           test -n "${layer_digest}"
-          payload="$(oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
-            | { gzip -dc 2>/dev/null || cat; })"
-          payload_len="$(printf '%s' "${payload}" | wc -c | tr -d ' ')"
-          printf 'payload_len=%s\n' "${payload_len}"
-          printf 'payload_b64_head='
-          printf '%s' "${payload}" | head -c 2000 | base64 -w0
-          printf '\n'
-          printf '%s' "${payload}" | jq -e --arg d "${digest#sha256:}" '
-            (if type=="object" and has("payload")
-             then .payload | @base64d | fromjson
-             else . end)
-            | select(type=="object")
-            | (.predicateType | startswith("https://slsa.dev/provenance/"))
-            and (.subject[]?.digest.sha256 == $d)
-          ' >/dev/null
+          oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
+            | { gzip -dc 2>/dev/null || cat; } \
+            | jq -e --arg d "${digest#sha256:}" '
+              (if has("payload") then .payload | @base64d | fromjson else . end)
+              | (.predicateType | startswith("https://slsa.dev/provenance/"))
+              and (.subject[]?.digest.sha256 == $d)
+            ' >/dev/null
 
       - name: "Test: Pull base image for local tests"
         run: |
@@ -445,15 +433,10 @@ jobs:
         run: |
           set -euo pipefail
           for arch in amd64 arm64; do
-            image_tag_var="IMAGE_TEST_TAG_${arch}"
-            image_tag="${!image_tag_var}"
-            digest="$(docker buildx imagetools inspect --raw "${image_tag}" \
-              | jq -r '.manifests[]
-                | select(.annotations."vnd.docker.reference.type"!="attestation-manifest")
-                | .digest' | head -n1)"
-            test -n "${digest}"
-            att_digest="$(docker buildx imagetools inspect --raw "${IMAGE_NAME}@${digest}" \
-              | jq -r '.manifests[]
+            digest_var="AICAGE_IMAGE_DIGEST_${arch}"
+            digest="${!digest_var}"
+            att_digest="$(oras discover --output json "${IMAGE_NAME}@${digest}" \
+              | jq -r '.referrers[]
                 | select(.annotations."vnd.docker.reference.type"=="attestation-manifest")
                 | .digest' | head -n1)"
             test -n "${att_digest}"
@@ -463,21 +446,13 @@ jobs:
                   | startswith("https://slsa.dev/provenance/"))
                 | .digest' | head -n1)"
             test -n "${layer_digest}"
-            payload="$(oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
-              | { gzip -dc 2>/dev/null || cat; })"
-            payload_len="$(printf '%s' "${payload}" | wc -c | tr -d ' ')"
-            printf 'payload_len=%s\n' "${payload_len}"
-            printf 'payload_b64_head='
-            printf '%s' "${payload}" | head -c 2000 | base64 -w0
-            printf '\n'
-            printf '%s' "${payload}" | jq -e --arg d "${digest#sha256:}" '
-              (if type=="object" and has("payload")
-               then .payload | @base64d | fromjson
-               else . end)
-              | select(type=="object")
-              | (.predicateType | startswith("https://slsa.dev/provenance/"))
-              and (.subject[]?.digest.sha256 == $d)
-            ' >/dev/null
+            oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
+              | { gzip -dc 2>/dev/null || cat; } \
+              | jq -e --arg d "${digest#sha256:}" '
+                (if has("payload") then .payload | @base64d | fromjson else . end)
+                | (.predicateType | startswith("https://slsa.dev/provenance/"))
+                and (.subject[]?.digest.sha256 == $d)
+              ' >/dev/null
           done
 
       - name: "Publish: Sign multi-arch manifest"
