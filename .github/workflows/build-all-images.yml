@@ -257,7 +257,7 @@ jobs:
         run: |
           set -euo pipefail
           digest="${{ steps.build_image.outputs.digest }}"
-          att_digest="$(oras discover --output json "${IMAGE_NAME}@${digest}" \
+          att_digest="$(oras discover --format json "${IMAGE_NAME}@${digest}" \
             | jq -r '.referrers[]
               | select(.annotations."vnd.docker.reference.type"=="attestation-manifest")
               | .digest' | head -n1)"
@@ -268,13 +268,17 @@ jobs:
                 | startswith("https://slsa.dev/provenance/"))
               | .digest' | head -n1)"
           test -n "${layer_digest}"
-          oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
-            | { gzip -dc 2>/dev/null || cat; } \
-            | jq -e --arg d "${digest#sha256:}" '
-              (if has("payload") then .payload | @base64d | fromjson else . end)
-              | (.predicateType | startswith("https://slsa.dev/provenance/"))
-              and (.subject[]?.digest.sha256 == $d)
-            ' >/dev/null
+          raw="$(oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
+            | { gzip -dc 2>/dev/null || cat; })"
+          norm="$(printf '%s' "${raw}" \
+            | jq -c 'if has("payload") then .payload | @base64d | fromjson else . end')"
+          printf 'predicateType=%s\n' "$(printf '%s' "${norm}" | jq -r '.predicateType')"
+          printf 'subjects=%s\n' "$(printf '%s' "${norm}" | jq -r '.subject[]?.digest.sha256' \
+            | paste -sd, -)"
+          printf '%s' "${norm}" | jq -e --arg d "${digest#sha256:}" '
+            (.predicateType | startswith("https://slsa.dev/provenance/"))
+            and (.subject[]?.digest.sha256 == $d)
+          ' >/dev/null
 
       - name: "Test: Pull base image for local tests"
         run: |
@@ -441,7 +445,7 @@ jobs:
           for arch in amd64 arm64; do
             digest_var="AICAGE_IMAGE_DIGEST_${arch}"
             digest="${!digest_var}"
-            att_digest="$(oras discover --output json "${IMAGE_NAME}@${digest}" \
+            att_digest="$(oras discover --format json "${IMAGE_NAME}@${digest}" \
               | jq -r '.referrers[]
                 | select(.annotations."vnd.docker.reference.type"=="attestation-manifest")
                 | .digest' | head -n1)"
@@ -452,13 +456,17 @@ jobs:
                   | startswith("https://slsa.dev/provenance/"))
                 | .digest' | head -n1)"
             test -n "${layer_digest}"
-            oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
-              | { gzip -dc 2>/dev/null || cat; } \
-              | jq -e --arg d "${digest#sha256:}" '
-                (if has("payload") then .payload | @base64d | fromjson else . end)
-                | (.predicateType | startswith("https://slsa.dev/provenance/"))
-                and (.subject[]?.digest.sha256 == $d)
-              ' >/dev/null
+            raw="$(oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
+              | { gzip -dc 2>/dev/null || cat; })"
+            norm="$(printf '%s' "${raw}" \
+              | jq -c 'if has("payload") then .payload | @base64d | fromjson else . end')"
+            printf 'predicateType=%s\n' "$(printf '%s' "${norm}" | jq -r '.predicateType')"
+            printf 'subjects=%s\n' "$(printf '%s' "${norm}" | jq -r '.subject[]?.digest.sha256' \
+              | paste -sd, -)"
+            printf '%s' "${norm}" | jq -e --arg d "${digest#sha256:}" '
+              (.predicateType | startswith("https://slsa.dev/provenance/"))
+              and (.subject[]?.digest.sha256 == $d)
+            ' >/dev/null
           done
 
       - name: "Publish: Sign multi-arch manifest"
