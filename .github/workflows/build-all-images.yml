@@ -270,8 +270,10 @@ jobs:
               | .digest' | head -n1)"
           test -n "${layer_digest}"
           oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
+            | { gzip -dc 2>/dev/null || cat; } \
             | jq -e --arg d "${digest#sha256:}" '
-              (.predicateType | startswith("https://slsa.dev/provenance/"))
+              if has("payload") then .payload | @base64d | fromjson else . end
+              | (.predicateType | startswith("https://slsa.dev/provenance/"))
               and (.subject[]? | select(.digest.sha256 == $d))
             ' >/dev/null
 
@@ -454,8 +456,10 @@ jobs:
                 | .digest' | head -n1)"
             test -n "${layer_digest}"
             oras blob fetch --output - "${IMAGE_NAME}@${layer_digest}" \
+              | { gzip -dc 2>/dev/null || cat; } \
               | jq -e --arg d "${digest#sha256:}" '
-                (.predicateType | startswith("https://slsa.dev/provenance/"))
+                if has("payload") then .payload | @base64d | fromjson else . end
+                | (.predicateType | startswith("https://slsa.dev/provenance/"))
                 and (.subject[]? | select(.digest.sha256 == $d))
               ' >/dev/null
           done
