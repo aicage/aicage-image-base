@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.7-labs
 ARG ROOT_IMAGE
 
 FROM ${ROOT_IMAGE} AS root_image
