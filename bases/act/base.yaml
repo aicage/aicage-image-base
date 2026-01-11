@@ -1,4 +1,4 @@
-root_image: ghcr.io/catthehacker/ubuntu:act-latest
+from_image: ghcr.io/catthehacker/ubuntu:act-latest
 base_image_distro: Ubuntu
 base_image_description: (Ubuntu) Runner image from act (act runs GitHub Actions locally)
 os_installer: distro/debian/install.sh

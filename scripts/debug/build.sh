@@ -57,7 +57,7 @@ done
 
 load_config_file
 
-ROOT_IMAGE="$(get_base_field "${BASE_ALIAS}" root_image)"
+FROM_IMAGE="$(get_base_field "${BASE_ALIAS}" from_image)"
 OS_INSTALLER="$(get_base_field "${BASE_ALIAS}" os_installer)"
 OS_INSTALLER_PATH="${ROOT_DIR}/scripts/os-installers/${OS_INSTALLER}"
 [[ -f "${OS_INSTALLER_PATH}" ]] || die "OS installer not found for '${BASE_ALIAS}': ${OS_INSTALLER}"
@@ -66,13 +66,13 @@ VERSION_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALI
 LATEST_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}"
 
 (
-echo "UpstreamBase=${ROOT_IMAGE}"
+echo "UpstreamBase=${FROM_IMAGE}"
  echo "Installer=${OS_INSTALLER}"
  echo "Tags=${VERSION_TAG},${LATEST_TAG}"
 ) >&2
 
 docker build \
-  --build-arg "ROOT_IMAGE=${ROOT_IMAGE}" \
+  --build-arg "FROM_IMAGE=${FROM_IMAGE}" \
   --build-arg "OS_INSTALLER=${OS_INSTALLER}" \
   --tag "${VERSION_TAG}" \
   --tag "${LATEST_TAG}" \

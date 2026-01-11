@@ -1,4 +1,4 @@
-root_image: fedora:latest
+from_image: fedora:latest
 base_image_distro: Fedora
 base_image_description: For RedHat/Fedora users
 os_installer: distro/redhat/install.sh

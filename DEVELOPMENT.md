@@ -57,7 +57,7 @@ Smoke suites live in `tests/smoke/` (including subfolders); run individual files
 
 ## Adding a base
 
-1. Create `bases/<alias>/base.yaml` with `root_image` and `os_installer`.
+1. Create `bases/<alias>/base.yaml` with `from_image` and `os_installer`.
 2. Add or adjust installer scripts if the base needs extra setup.
 3. Update smoke coverage under `tests/smoke/` if the new base requires validation.
 4. Document the new base in `README.md` if it should be visible to users.

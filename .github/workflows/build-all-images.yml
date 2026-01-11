@@ -207,7 +207,7 @@ jobs:
             echo "IMAGE_VERSION_TAG=${IMAGE_VERSION_TAG}"
             echo "IMAGE_LATEST_TAG=${IMAGE_LATEST_TAG}"
             echo "IMAGE_TEST_TAG=${IMAGE_TEST_TAG}"
-            echo "ROOT_IMAGE=$(get_base_field "${BASE_ALIAS}" root_image)"
+            echo "FROM_IMAGE=$(get_base_field "${BASE_ALIAS}" from_image)"
             echo "OS_INSTALLER=$(get_base_field "${BASE_ALIAS}" os_installer)"
           } >> "$GITHUB_OUTPUT"
           {
@@ -215,7 +215,7 @@ jobs:
             echo "IMAGE_VERSION_TAG=${IMAGE_VERSION_TAG}"
             echo "IMAGE_LATEST_TAG=${IMAGE_LATEST_TAG}"
             echo "IMAGE_TEST_TAG=${IMAGE_TEST_TAG}"
-            echo "ROOT_IMAGE=$(get_base_field "${BASE_ALIAS}" root_image)"
+            echo "FROM_IMAGE=$(get_base_field "${BASE_ALIAS}" from_image)"
             echo "OS_INSTALLER=$(get_base_field "${BASE_ALIAS}" os_installer)"
           } >> "$GITHUB_ENV"
 
@@ -239,7 +239,7 @@ jobs:
           push: true
           provenance: true
           build-args: |
-            ROOT_IMAGE=${{ env.ROOT_IMAGE }}
+            FROM_IMAGE=${{ env.FROM_IMAGE }}
             OS_INSTALLER=${{ env.OS_INSTALLER }}
           tags: |
             ${{ env.IMAGE_TEST_TAG }}
