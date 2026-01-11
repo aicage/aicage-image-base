@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
-# shellcheck source=../../../../scripts/common.sh
-source "${ROOT_DIR}/scripts/common.sh"
+# add retry and other params to reduce failure in pipelines
+curl_wrapper() {
+  curl -fsSL \
+    --retry 8 \
+    --retry-all-errors \
+    --retry-delay 2 \
+    --max-time 600 \
+    "$@"
+}
 
 if ! command -v gosu >/dev/null 2>&1; then
   ARCH="$(uname -m)"

@@ -8,9 +8,15 @@ fi
 export RUSTUP_HOME=/usr/local/rustup
 export CARGO_HOME=/usr/local/cargo
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-# shellcheck source=../../scripts/common.sh
-source "${ROOT_DIR}/scripts/common.sh"
+# add retry and other params to reduce failure in pipelines
+curl_wrapper() {
+  curl -fsSL \
+    --retry 8 \
+    --retry-all-errors \
+    --retry-delay 2 \
+    --max-time 600 \
+    "$@"
+}
 
 curl_wrapper https://sh.rustup.rs | sh -s -- -y --profile minimal --no-modify-path
 

@@ -6,9 +6,15 @@ export GNUPGHOME="$(mktemp -d)"
 # keyring
 install -m 0755 -d /etc/apt/keyrings
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
-# shellcheck source=../../../../scripts/common.sh
-source "${ROOT_DIR}/scripts/common.sh"
+# add retry and other params to reduce failure in pipelines
+curl_wrapper() {
+  curl -fsSL \
+    --retry 8 \
+    --retry-all-errors \
+    --retry-delay 2 \
+    --max-time 600 \
+    "$@"
+}
 
 curl_wrapper https://download.docker.com/linux/debian/gpg \
   | gpg --dearmor -o /etc/apt/keyrings/docker.gpg

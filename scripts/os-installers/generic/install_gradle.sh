@@ -5,9 +5,15 @@ if command -v gradle >/dev/null 2>&1; then
   exit 0
 fi
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-# shellcheck source=../../scripts/common.sh
-source "${ROOT_DIR}/scripts/common.sh"
+# add retry and other params to reduce failure in pipelines
+curl_wrapper() {
+  curl -fsSL \
+    --retry 8 \
+    --retry-all-errors \
+    --retry-delay 2 \
+    --max-time 600 \
+    "$@"
+}
 
 gradle_json="$(curl_wrapper https://services.gradle.org/versions/current)"
 gradle_version="$(echo "${gradle_json}" | jq -r '.version')"
@@ -29,9 +35,15 @@ trap 'rm -rf "${tmp_dir}"' EXIT
 
 archive_path="${tmp_dir}/gradle.zip"
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-# shellcheck source=../../scripts/common.sh
-source "${ROOT_DIR}/scripts/common.sh"
+# add retry and other params to reduce failure in pipelines
+curl_wrapper() {
+  curl -fsSL \
+    --retry 8 \
+    --retry-all-errors \
+    --retry-delay 2 \
+    --max-time 600 \
+    "$@"
+}
 
 curl_wrapper "${download_url}" -o "${archive_path}"
 
