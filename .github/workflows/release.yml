@@ -55,7 +55,7 @@ jobs:
       - name: Package bases, os-installers and test-suites
         run: |
           tar -czf bases.tar.gz bases
-          tar -czf os-installers.tar.gz scripts/os-installers
+          tar -czf os-installers.tar.gz -C scripts os-installers
           tar -czf test-suites.tar.gz tests
 
       - name: Create GitHub release
