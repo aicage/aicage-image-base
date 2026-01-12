@@ -52,10 +52,11 @@ jobs:
             --schemafile doc/validation/base.schema.json \
             bases/*/base.yaml
 
-      - name: Package bases and os-installers
+      - name: Package bases, os-installers and test-suites
         run: |
           tar -czf bases.tar.gz bases
           tar -czf os-installers.tar.gz scripts/os-installers
+          tar -czf test-suites.tar.gz tests
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
@@ -67,3 +68,4 @@ jobs:
             bases.tar.gz
             os-installers.tar.gz
             scripts/entrypoint.sh
+            test-suites.tar.gz
