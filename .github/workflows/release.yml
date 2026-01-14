@@ -55,11 +55,12 @@ jobs:
 
       - name: "Release: Package release artifacts"
         run: |
-          mkdir dist
-          tar -czf dist/bases.tar.gz bases
-          tar -czf dist/os-installers.tar.gz -C scripts os-installers
-          tar -czf dist/test-suites.tar.gz tests
-          cp scripts/os-installers/entrypoint.sh dist
+          mkdir -p dist
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          tar -czf dist/"${REPO_NAME}".tar.gz \
+            bases \
+            tests \
+            -C scripts os-installers
 
       - name: "Release: Create SHA256SUMS"
         run: |
@@ -85,4 +86,4 @@ jobs:
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
-          files: dist/**
+          files: dist/*
