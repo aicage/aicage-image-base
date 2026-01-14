@@ -52,6 +52,9 @@ jobs:
           check-jsonschema \
             --schemafile doc/validation/base.schema.json \
             bases/*/base.yaml
+          check-jsonschema \
+            --schemafile doc/validation/base-build.schema.json \
+            bases/*/base-build.yaml
 
       - name: "Release: Package release artifacts"
         run: |

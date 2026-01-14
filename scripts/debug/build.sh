@@ -58,7 +58,7 @@ done
 load_config_file
 
 FROM_IMAGE="$(get_base_field "${BASE_ALIAS}" from_image)"
-OS_INSTALLER="$(get_base_field "${BASE_ALIAS}" os_installer)"
+OS_INSTALLER="$(get_base_build_field "${BASE_ALIAS}" os_installer)"
 OS_INSTALLER_PATH="${ROOT_DIR}/scripts/os-installers/${OS_INSTALLER}"
 [[ -f "${OS_INSTALLER_PATH}" ]] || die "OS installer not found for '${BASE_ALIAS}': ${OS_INSTALLER}"
 

@@ -34,17 +34,31 @@ load_config_file() {
   done < <(yq -er 'to_entries[] | [.key, (.value // "")] | @tsv' "${config_file}")
 }
 
-get_base_field() {
+_read_yaml_field() {
   local alias="$1"
   local field="$2"
+  local definition_filename="$3"
+
   local base_dir="${BASE_DEFINITIONS_DIR}/${alias}"
-  local definition_file="${base_dir}/base.yaml"
+  local definition_file="${base_dir}/${definition_filename}"
+  local value
 
   [[ -d "${base_dir}" ]] || _die "Base alias '${alias}' not found under ${BASE_DEFINITIONS_DIR}"
-  [[ -f "${definition_file}" ]] || _die "Missing base.yaml for '${alias}'"
+  [[ -f "${definition_file}" ]] || _die "Missing ${definition_filename} for '${alias}'"
 
-  local value
   value="$(yq -er ".${field}" "${definition_file}")" || _die "Failed to read ${field} from ${definition_file}"
   [[ -n "${value}" && "${value}" != "null" ]] || _die "${field} missing in ${definition_file}"
   printf '%s\n' "${value}"
+}
+
+get_base_field() {
+  local alias="$1"
+  local field="$2"
+  _read_yaml_field "${alias}" "${field}" base.yaml
+}
+
+get_base_build_field() {
+  local alias="$1"
+  local field="$2"
+  _read_yaml_field "${alias}" "${field}" base-build.yaml
 }

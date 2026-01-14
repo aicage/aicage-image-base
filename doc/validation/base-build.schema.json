@@ -1,20 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AICAGE base definition",
+  "title": "AICAGE base build definition",
   "type": "object",
   "required": [
-    "from_image",
-    "base_image_distro",
-    "base_image_description"
+    "os_installer",
+    "test_suite"
   ],
   "properties": {
-    "from_image": {
+    "os_installer": {
       "type": "string"
     },
-    "base_image_distro": {
-      "type": "string"
-    },
-    "base_image_description": {
+    "test_suite": {
       "type": "string"
     }
   },

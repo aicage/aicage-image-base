@@ -94,6 +94,9 @@ jobs:
           check-jsonschema \
             --schemafile doc/validation/base.schema.json \
             bases/*/base.yaml
+          check-jsonschema \
+            --schemafile doc/validation/base-build.schema.json \
+            bases/*/base-build.yaml
 
   matrix:
     name: Build matrix for ${{ needs.resolve-ref.outputs.GIT_REF }}
@@ -208,7 +211,7 @@ jobs:
             echo "IMAGE_LATEST_TAG=${IMAGE_LATEST_TAG}"
             echo "IMAGE_TEST_TAG=${IMAGE_TEST_TAG}"
             echo "FROM_IMAGE=$(get_base_field "${BASE_ALIAS}" from_image)"
-            echo "OS_INSTALLER=$(get_base_field "${BASE_ALIAS}" os_installer)"
+            echo "OS_INSTALLER=$(get_base_build_field "${BASE_ALIAS}" os_installer)"
           } >> "$GITHUB_OUTPUT"
           {
             echo "IMAGE_NAME=${IMAGE_NAME}"
@@ -216,7 +219,7 @@ jobs:
             echo "IMAGE_LATEST_TAG=${IMAGE_LATEST_TAG}"
             echo "IMAGE_TEST_TAG=${IMAGE_TEST_TAG}"
             echo "FROM_IMAGE=$(get_base_field "${BASE_ALIAS}" from_image)"
-            echo "OS_INSTALLER=$(get_base_field "${BASE_ALIAS}" os_installer)"
+            echo "OS_INSTALLER=$(get_base_build_field "${BASE_ALIAS}" os_installer)"
           } >> "$GITHUB_ENV"
 
       - name: "Set up Buildx"

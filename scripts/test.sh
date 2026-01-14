@@ -55,7 +55,7 @@ done
 [[ -n "${IMAGE_REF}" ]] || { log "--image is required"; usage; }
 [[ -n "${BASE_ALIAS}" ]] || { log "--base is required"; usage; }
 
-if ! TEST_SUITE="$(get_base_field "${BASE_ALIAS}" test_suite)"; then
+if ! TEST_SUITE="$(get_base_build_field "${BASE_ALIAS}" test_suite)"; then
   TEST_SUITE="default"
 fi
 [[ -n "${TEST_SUITE}" ]] || die "Test suite not defined"
