@@ -22,10 +22,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIPX_BIN_DIR=/opt/pipx/bin \
     PATH="/opt/pipx/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
 
-RUN --mount=type=bind,source=scripts,target=/tmp/aicage/scripts,readonly \
-    /tmp/aicage/scripts/os-installers/${OS_INSTALLER}
-
-COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN --mount=type=bind,source=scripts/os-installers,target=/tmp/aicage/scripts/os-installers,readonly \
+    /tmp/aicage/scripts/os-installers/${OS_INSTALLER} && \
+    cp /tmp/aicage/scripts/os-installers/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 ENV AICAGE_ENTRYPOINT_CMD=bash
 
