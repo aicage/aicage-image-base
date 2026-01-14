@@ -60,7 +60,9 @@ jobs:
           tar -czf dist/"${REPO_NAME}".tar.gz \
             bases \
             tests \
-            -C scripts os-installers
+            -C scripts \
+              os-installers \
+              entrypoint.sh
 
       - name: "Release: Create SHA256SUMS"
         run: |
