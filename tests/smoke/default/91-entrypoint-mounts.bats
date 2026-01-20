@@ -42,6 +42,31 @@ cleanup_mount_dir() {
   [[ "$output" == *"name = example"* ]]
 }
 
+@test "gitconfig mount is symlinked into root home" {
+  host_dir="$(mktemp -d)"
+  trap 'cleanup_mount_dir "${host_dir}"' RETURN
+  chmod 755 "${host_dir}"
+  printf '[user]\n  name = example\n' >"${host_dir}/gitconfig"
+  chmod 644 "${host_dir}/gitconfig"
+
+  run docker run --rm \
+    -v "${host_dir}:/aicage/host:ro" \
+    --env AICAGE_UID=0 \
+    --env AICAGE_GID=0 \
+    --env AICAGE_USER=demo \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      [[ -L /root/.gitconfig ]]
+      [[ -L /root/.config/git/config ]]
+      [[ $(readlink -f /root/.gitconfig) == "/aicage/host/gitconfig" ]]
+      [[ $(readlink -f /root/.config/git/config) == "/aicage/host/gitconfig" ]]
+      cat /root/.gitconfig
+    '
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"name = example"* ]]
+}
+
 @test "gnupg and ssh mounts are symlinked into home" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
@@ -66,6 +91,36 @@ cleanup_mount_dir() {
       [[ $(readlink -f ${HOME}/.ssh) == "/aicage/host/ssh" ]]
       cat ${HOME}/.gnupg/config
       cat ${HOME}/.ssh/known_hosts
+    '
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"gnupg-data"* ]]
+  [[ "$output" == *"ssh-data"* ]]
+}
+
+@test "gnupg and ssh mounts are symlinked into root home" {
+  host_dir="$(mktemp -d)"
+  trap 'cleanup_mount_dir "${host_dir}"' RETURN
+  chmod 755 "${host_dir}"
+  mkdir -p "${host_dir}/gnupg" "${host_dir}/ssh"
+  chmod 755 "${host_dir}/gnupg" "${host_dir}/ssh"
+  printf 'gnupg-data\n' >"${host_dir}/gnupg/config"
+  printf 'ssh-data\n' >"${host_dir}/ssh/known_hosts"
+  chmod 644 "${host_dir}/gnupg/config" "${host_dir}/ssh/known_hosts"
+
+  run docker run --rm \
+    -v "${host_dir}:/aicage/host:ro" \
+    --env AICAGE_UID=0 \
+    --env AICAGE_GID=0 \
+    --env AICAGE_USER=demo \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      [[ -L /root/.gnupg ]]
+      [[ -L /root/.ssh ]]
+      [[ $(readlink -f /root/.gnupg) == "/aicage/host/gnupg" ]]
+      [[ $(readlink -f /root/.ssh) == "/aicage/host/ssh" ]]
+      cat /root/.gnupg/config
+      cat /root/.ssh/known_hosts
     '
   [ "$status" -eq 0 ]
   [[ "$output" == *"gnupg-data"* ]]
