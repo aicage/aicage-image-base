@@ -13,6 +13,16 @@ is_mountpoint() {
   [ "$(stat -c %d "$path" 2>/dev/null)" != "$(stat -c %d "$parent" 2>/dev/null)" ]
 }
 
+replace_symlink() {
+  local target_path="$1"
+  local link_path="$2"
+
+  if [[ -e "${link_path}" || -L "${link_path}" ]]; then
+    rm -rf "${link_path}"
+  fi
+  ln -sfn "${target_path}" "${link_path}"
+}
+
 copy_skel_if_safe() {
   local home_dir="$1"
   local uid="$2"
@@ -61,23 +71,23 @@ setup_agent_config_link() {
       target_path="${TARGET_HOME}/${target_path}"
     fi
     mkdir -p "$(dirname "${target_path}")"
-    ln -sfn "${AICAGE_AGENT_CONFIG_MOUNT}" "${target_path}"
+    replace_symlink "${AICAGE_AGENT_CONFIG_MOUNT}" "${target_path}"
   fi
 }
 
 setup_host_symlinks() {
   if [[ -e "/aicage/host/gitconfig" ]]; then
     mkdir -p "${TARGET_HOME}/.config/git"
-    ln -sfn "/aicage/host/gitconfig" "${TARGET_HOME}/.gitconfig"
-    ln -sfn "/aicage/host/gitconfig" "${TARGET_HOME}/.config/git/config"
+    replace_symlink "/aicage/host/gitconfig" "${TARGET_HOME}/.gitconfig"
+    replace_symlink "/aicage/host/gitconfig" "${TARGET_HOME}/.config/git/config"
   fi
 
   if [[ -e "/aicage/host/gnupg" ]]; then
-    ln -sfn "/aicage/host/gnupg" "${TARGET_HOME}/.gnupg"
+    replace_symlink "/aicage/host/gnupg" "${TARGET_HOME}/.gnupg"
   fi
 
   if [[ -e "/aicage/host/ssh" ]]; then
-    ln -sfn "/aicage/host/ssh" "${TARGET_HOME}/.ssh"
+    replace_symlink "/aicage/host/ssh" "${TARGET_HOME}/.ssh"
   fi
 }
 
