@@ -43,134 +43,172 @@ copy_skel_if_safe() {
   done
 }
 
+set_target_env() {
+  export HOME="$1"
+  export USER="$2"
+  export PATH="${HOME}/.local/bin:${PATH}"
+}
+
+setup_agent_config_link() {
+  local target_path
+
+  AICAGE_AGENT_CONFIG_MOUNT="/aicage/agent-config"
+  if [[ -n "${AICAGE_AGENT_CONFIG_PATH:-}" ]]; then
+    target_path="${AICAGE_AGENT_CONFIG_PATH}"
+    if [[ "${target_path}" == "~/"* ]]; then
+      target_path="${TARGET_HOME}/${target_path:2}"
+    elif [[ "${target_path:0:1}" != "/" ]]; then
+      target_path="${TARGET_HOME}/${target_path}"
+    fi
+    mkdir -p "$(dirname "${target_path}")"
+    ln -sfn "${AICAGE_AGENT_CONFIG_MOUNT}" "${target_path}"
+  fi
+}
+
+setup_host_symlinks() {
+  if [[ -e "/aicage/host/gitconfig" ]]; then
+    mkdir -p "${TARGET_HOME}/.config/git"
+    ln -sfn "/aicage/host/gitconfig" "${TARGET_HOME}/.gitconfig"
+    ln -sfn "/aicage/host/gitconfig" "${TARGET_HOME}/.config/git/config"
+  fi
+
+  if [[ -e "/aicage/host/gnupg" ]]; then
+    ln -sfn "/aicage/host/gnupg" "${TARGET_HOME}/.gnupg"
+  fi
+
+  if [[ -e "/aicage/host/ssh" ]]; then
+    ln -sfn "/aicage/host/ssh" "${TARGET_HOME}/.ssh"
+  fi
+}
+
+setup_user_and_group() {
+  local existing_group_name existing_user_name
+
+  existing_group_name="$(getent group "${TARGET_GID}" | cut -d: -f1 || true)"
+  if [[ -n "${existing_group_name}" && "${existing_group_name}" != "${TARGET_USER}" && "${existing_group_name}" != "docker" ]]; then
+    if ! getent group "${TARGET_USER}" >/dev/null; then
+      groupmod -n "${TARGET_USER}" "${existing_group_name}"
+    fi
+  fi
+
+  if ! getent group "${TARGET_GID}" >/dev/null; then
+    groupadd -g "${TARGET_GID}" "${TARGET_USER}"
+  fi
+
+  existing_user_name="$(getent passwd "${TARGET_UID}" | cut -d: -f1 || true)"
+  if [[ -n "${existing_user_name}" && "${existing_user_name}" != "${TARGET_USER}" ]]; then
+    if ! getent passwd "${TARGET_USER}" >/dev/null; then
+      usermod -l "${TARGET_USER}" "${existing_user_name}"
+    fi
+  fi
+}
+
+setup_home() {
+  local home_parent home_dir home_parent_is_mount home_dir_is_mount
+
+  CREATE_HOME="--no-create-home"
+  COPY_SKEL="false"
+  home_parent="/home"
+  home_dir="/home/${TARGET_USER}"
+  home_parent_is_mount="false"
+  home_dir_is_mount="false"
+
+  if [ -d "${home_parent}" ] && is_mountpoint "${home_parent}"; then
+    home_parent_is_mount="true"
+  fi
+
+  if [ -d "${home_dir}" ] && is_mountpoint "${home_dir}"; then
+    home_dir_is_mount="true"
+  fi
+
+  if [[ "${home_parent_is_mount}" == "true" || "${home_dir_is_mount}" == "true" ]]; then
+    CREATE_HOME="--no-create-home"
+    COPY_SKEL="false"
+  elif [ -d "${home_dir}" ]; then
+    CREATE_HOME="--no-create-home"
+    COPY_SKEL="true"
+  else
+    CREATE_HOME="--create-home"
+    COPY_SKEL="false"
+  fi
+
+  if ! getent passwd "${TARGET_UID}" >/dev/null; then
+    useradd "${CREATE_HOME}" -u "${TARGET_UID}" -g "${TARGET_GID}" -s /bin/bash "${TARGET_USER}"
+  fi
+
+  TARGET_USER="$(getent passwd "${TARGET_UID}" | cut -d: -f1)"
+  TARGET_HOME="$(getent passwd "${TARGET_UID}" | cut -d: -f6)"
+  TARGET_HOME="${TARGET_HOME:-/home/${TARGET_USER}}"
+
+  if [[ "${COPY_SKEL}" == "true" ]]; then
+    copy_skel_if_safe "${TARGET_HOME}" "${TARGET_UID}" "${TARGET_GID}"
+  fi
+}
+
+setup_docker_group() {
+  local docker_sock docker_gid_group docker_sock_gid existing_docker_gid_group
+
+  docker_sock="/var/run/docker.sock"
+  docker_gid_group=""
+  if [[ -S "${docker_sock}" ]]; then
+    docker_sock_gid="$(stat -c '%g' "${docker_sock}")"
+    existing_docker_gid_group="$(getent group "${docker_sock_gid}" | cut -d: -f1 || true)"
+    if [[ -n "${existing_docker_gid_group}" ]]; then
+      docker_gid_group="${existing_docker_gid_group}"
+    elif getent group docker >/dev/null; then
+      groupmod -g "${docker_sock_gid}" docker
+      docker_gid_group="docker"
+    else
+      groupadd -g "${docker_sock_gid}" docker
+      docker_gid_group="docker"
+    fi
+  fi
+
+  if [[ -n "${docker_gid_group}" ]]; then
+    usermod -aG "${docker_gid_group}" "${TARGET_USER}"
+  fi
+}
+
+setup_workspace() {
+  mkdir -p "${AICAGE_WORKSPACE}"
+  chown "${TARGET_UID}:${TARGET_GID}" "${AICAGE_WORKSPACE}"
+  if [ -d "${TARGET_HOME}" ]; then
+    if ! is_mountpoint "/home" && ! is_mountpoint "${TARGET_HOME}"; then
+      chown "${TARGET_UID}:${TARGET_GID}" "${TARGET_HOME}"
+    fi
+  fi
+}
+
 # set up user and group
-TARGET_UID="${AICAGE_UID:-${UID:-1000}}"
-TARGET_GID="${AICAGE_GID:-${GID:-1000}}"
 TARGET_USER="${AICAGE_USER:-${USER:-aicage}}"
+TARGET_UID="${AICAGE_UID:-${UID:-1000}}"
+TARGET_GID="${AICAGE_GID:-${GID:-0}}"
 
 if [[ "${TARGET_UID}" == "0" ]]; then
-  exec "$@"
+  TARGET_USER="root"
 fi
 
-existing_group_name="$(getent group "${TARGET_GID}" | cut -d: -f1 || true)"
-if [[ -n "${existing_group_name}" && "${existing_group_name}" != "${TARGET_USER}" && "${existing_group_name}" != "docker" ]]; then
-  if ! getent group "${TARGET_USER}" >/dev/null; then
-    groupmod -n "${TARGET_USER}" "${existing_group_name}"
-  fi
-fi
-
-if ! getent group "${TARGET_GID}" >/dev/null; then
-  groupadd -g "${TARGET_GID}" "${TARGET_USER}"
-fi
-
-existing_user_name="$(getent passwd "${TARGET_UID}" | cut -d: -f1 || true)"
-if [[ -n "${existing_user_name}" && "${existing_user_name}" != "${TARGET_USER}" ]]; then
-  if ! getent passwd "${TARGET_USER}" >/dev/null; then
-    usermod -l "${TARGET_USER}" "${existing_user_name}"
-  fi
-fi
-
-CREATE_HOME="--no-create-home"
-COPY_SKEL="false"
-home_parent="/home"
-home_dir="/home/${TARGET_USER}"
-home_parent_is_mount="false"
-home_dir_is_mount="false"
-
-if [ -d "${home_parent}" ] && is_mountpoint "${home_parent}"; then
-  home_parent_is_mount="true"
-fi
-
-if [ -d "${home_dir}" ] && is_mountpoint "${home_dir}"; then
-  home_dir_is_mount="true"
-fi
-
-if [[ "${home_parent_is_mount}" == "true" || "${home_dir_is_mount}" == "true" ]]; then
-  CREATE_HOME="--no-create-home"
-  COPY_SKEL="false"
-elif [ -d "${home_dir}" ]; then
-  CREATE_HOME="--no-create-home"
-  COPY_SKEL="true"
+if [[ "${TARGET_USER}" == "root" ]]; then
+  TARGET_HOME="/root"
+  mkdir -p "${AICAGE_WORKSPACE}"
 else
-  CREATE_HOME="--create-home"
-  COPY_SKEL="false"
+  setup_user_and_group
+  setup_home
+  setup_docker_group
+  setup_workspace
 fi
 
-if ! getent passwd "${TARGET_UID}" >/dev/null; then
-  useradd "${CREATE_HOME}" -u "${TARGET_UID}" -g "${TARGET_GID}" -s /bin/bash "${TARGET_USER}"
-fi
-
-TARGET_USER="$(getent passwd "${TARGET_UID}" | cut -d: -f1)"
-TARGET_HOME="$(getent passwd "${TARGET_UID}" | cut -d: -f6)"
-TARGET_HOME="${TARGET_HOME:-/home/${TARGET_USER}}"
-
-if [[ "${COPY_SKEL}" == "true" ]]; then
-  copy_skel_if_safe "${TARGET_HOME}" "${TARGET_UID}" "${TARGET_GID}"
-fi
-
-# add user to docker group if present
-docker_sock="/var/run/docker.sock"
-docker_gid_group=""
-if [[ -S "${docker_sock}" ]]; then
-  docker_sock_gid="$(stat -c '%g' "${docker_sock}")"
-  existing_docker_gid_group="$(getent group "${docker_sock_gid}" | cut -d: -f1 || true)"
-  if [[ -n "${existing_docker_gid_group}" ]]; then
-    docker_gid_group="${existing_docker_gid_group}"
-  elif getent group docker >/dev/null; then
-    groupmod -g "${docker_sock_gid}" docker
-    docker_gid_group="docker"
-  else
-    groupadd -g "${docker_sock_gid}" docker
-    docker_gid_group="docker"
-  fi
-fi
-
-if [[ -n "${docker_gid_group}" ]]; then
-  usermod -aG "${docker_gid_group}" "${TARGET_USER}"
-fi
-
-# set up workspace folder
-mkdir -p "${AICAGE_WORKSPACE}"
-chown "${TARGET_UID}:${TARGET_GID}" "${AICAGE_WORKSPACE}"
-if [ -d "${TARGET_HOME}" ]; then
-  if ! is_mountpoint "/home" && ! is_mountpoint "${TARGET_HOME}"; then
-    chown "${TARGET_UID}:${TARGET_GID}" "${TARGET_HOME}"
-  fi
-fi
-
-AICAGE_AGENT_CONFIG_MOUNT="/aicage/agent-config"
-if [[ -n "${AICAGE_AGENT_CONFIG_PATH:-}" ]]; then
-  target_path="${AICAGE_AGENT_CONFIG_PATH}"
-  if [[ "${target_path}" == "~/"* ]]; then
-    target_path="${TARGET_HOME}/${target_path:2}"
-  elif [[ "${target_path:0:1}" != "/" ]]; then
-    target_path="${TARGET_HOME}/${target_path}"
-  fi
-  mkdir -p "$(dirname "${target_path}")"
-  ln -sfn "${AICAGE_AGENT_CONFIG_MOUNT}" "${target_path}"
-fi
-
-if [[ -e "/aicage/host/gitconfig" ]]; then
-  mkdir -p "${TARGET_HOME}/.config/git"
-  ln -sfn "/aicage/host/gitconfig" "${TARGET_HOME}/.gitconfig"
-  ln -sfn "/aicage/host/gitconfig" "${TARGET_HOME}/.config/git/config"
-fi
-
-if [[ -e "/aicage/host/gnupg" ]]; then
-  ln -sfn "/aicage/host/gnupg" "${TARGET_HOME}/.gnupg"
-fi
-
-if [[ -e "/aicage/host/ssh" ]]; then
-  ln -sfn "/aicage/host/ssh" "${TARGET_HOME}/.ssh"
-fi
-
-export HOME="${TARGET_HOME}"
-export USER="${TARGET_USER}"
-export PATH="${HOME}/.local/bin:${PATH}"
+setup_agent_config_link
+setup_host_symlinks
+set_target_env "${TARGET_HOME}" "${TARGET_USER}"
 
 cd "${AICAGE_WORKSPACE}"
 
 : "${AICAGE_ENTRYPOINT_CMD:=bash}"
 
-# switch to user
-exec gosu "${TARGET_UID}" "${AICAGE_ENTRYPOINT_CMD}" "$@"
+if [[ "${TARGET_USER}" == "root" ]]; then
+  exec "${AICAGE_ENTRYPOINT_CMD}" "$@"
+else
+  # switch to user
+  exec gosu "${TARGET_UID}" "${AICAGE_ENTRYPOINT_CMD}" "$@"
+fi
