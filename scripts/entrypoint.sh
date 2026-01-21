@@ -59,20 +59,22 @@ set_target_env() {
   export PATH="${HOME}/.local/bin:${PATH}"
 }
 
-setup_agent_config_link() {
-  local target_path
+setup_agent_config_links() {
+  local config_root target_path
+  config_root="/aicage/agent-config"
 
-  AICAGE_AGENT_CONFIG_MOUNT="/aicage/agent-config"
-  if [[ -n "${AICAGE_AGENT_CONFIG_PATH:-}" ]]; then
-    target_path="${AICAGE_AGENT_CONFIG_PATH}"
-    if [[ "${target_path}" == "~/"* ]]; then
-      target_path="${TARGET_HOME}/${target_path:2}"
-    elif [[ "${target_path:0:1}" != "/" ]]; then
-      target_path="${TARGET_HOME}/${target_path}"
-    fi
-    mkdir -p "$(dirname "${target_path}")"
-    replace_symlink "${AICAGE_AGENT_CONFIG_MOUNT}" "${target_path}"
+  if [[ ! -d "${config_root}" ]]; then
+    return 0
   fi
+
+  while IFS= read -r mount_point; do
+    if [[ "${mount_point}" == "${config_root}" ]]; then
+      continue
+    fi
+    target_path="${TARGET_HOME}/${mount_point#${config_root}/}"
+    mkdir -p "$(dirname "${target_path}")"
+    replace_symlink "${mount_point}" "${target_path}"
+  done < <(awk '{print $5}' /proc/self/mountinfo | awk -v root="${config_root}" '$0 ~ "^"root"/"')
 }
 
 setup_host_symlinks() {
@@ -212,7 +214,7 @@ else
   setup_workspace
 fi
 
-setup_agent_config_link
+setup_agent_config_links
 setup_host_symlinks
 set_target_env "${TARGET_HOME}" "${TARGET_USER}"
 
