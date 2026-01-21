@@ -198,7 +198,12 @@ setup_workspace() {
 # set up user and group
 TARGET_USER="${AICAGE_USER:-${USER:-aicage}}"
 TARGET_UID="${AICAGE_UID:-${UID:-1000}}"
-TARGET_GID="${AICAGE_GID:-${GID:-0}}"
+TARGET_GID="${AICAGE_GID:-${GID:-1000}}"
+
+if [[ "${TARGET_USER}" == "root" ]]; then
+  TARGET_UID="0"
+  TARGET_GID="0"
+fi
 
 if [[ "${TARGET_UID}" == "0" ]]; then
   TARGET_USER="root"

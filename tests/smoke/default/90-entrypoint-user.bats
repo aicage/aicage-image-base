@@ -77,3 +77,23 @@
   [ "${user}" = "root" ]
   [ "${home}" = "/root" ]
 }
+
+@test "root user forces uid and gid 0" {
+  run docker run --rm \
+    --env AICAGE_UID=1000 \
+    --env AICAGE_GID=1000 \
+    --env AICAGE_USER=root \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      printf "%s\n%s\n%s\n" "$(id -u)" "$(id -g)" "$(id -un)"
+    '
+  [ "$status" -eq 0 ]
+  mapfile -t lines <<<"${output}"
+  uid="${lines[0]}"
+  gid="${lines[1]}"
+  user="${lines[2]}"
+  [ "${uid}" -eq 0 ]
+  [ "${gid}" -eq 0 ]
+  [ "${user}" = "root" ]
+}
