@@ -182,6 +182,10 @@ setup_docker_group() {
 setup_workspace() {
   mkdir -p "${AICAGE_WORKSPACE}"
   chown "${TARGET_UID}:${TARGET_GID}" "${AICAGE_WORKSPACE}"
+  if [[ "${AICAGE_WORKSPACE}" != "/workspace" ]]; then
+    mkdir -p "/workspace"
+    chown "${TARGET_UID}:${TARGET_GID}" "/workspace"
+  fi
   if [ -d "${TARGET_HOME}" ]; then
     if ! is_mountpoint "/home" && ! is_mountpoint "${TARGET_HOME}"; then
       chown "${TARGET_UID}:${TARGET_GID}" "${TARGET_HOME}"
@@ -200,7 +204,7 @@ fi
 
 if [[ "${TARGET_USER}" == "root" ]]; then
   TARGET_HOME="/root"
-  mkdir -p "${AICAGE_WORKSPACE}"
+  setup_workspace
 else
   setup_user_and_group
   setup_home
