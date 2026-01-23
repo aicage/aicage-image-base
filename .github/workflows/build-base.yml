@@ -1,0 +1,181 @@
+name: Build Images for Base
+run-name: Build Images for Base
+
+"on":
+  workflow_call:
+    inputs:
+      base:
+        description: Base alias to build (matches bases/<alias>)
+        required: true
+        type: string
+      git_ref:
+        description: Git ref to check out
+        required: false
+        type: string
+      aicage_version:
+        description: Version to build
+        required: true
+        type: string
+      image:
+        description: Image to build (owner/image without tag)
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Base alias to build (matches bases/<alias>)
+        required: true
+        type: string
+      git_ref:
+        description: Git ref to check out
+        required: false
+        type: string
+      aicage_version:
+        description: Version to build
+        required: false
+        type: string
+        default: test
+      image:
+        description: Image to build (owner/image without tag)
+        required: false
+        type: string
+        default: ghcr.io/aicage/aicage-image-base
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  actions: read
+
+jobs:
+
+  build:
+    name: "${{ matrix.arch }}: Build and test image"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    env:
+      PLATFORM: ${{ matrix.platform }}
+      ARCH_SUFFIX: ${{ matrix.arch }}
+      BASE_ALIAS: ${{ inputs.base }}
+      ROOT_DIR: ${{ github.workspace }}
+      AICAGE_VERSION: ${{ inputs.aicage_version }}
+    outputs:
+      INDEX_DIGEST_amd64: ${{ steps.out-amd64.outputs.INDEX_DIGEST }}
+      INDEX_DIGEST_arm64: ${{ steps.out-arm64.outputs.INDEX_DIGEST }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+        with:
+          ref: ${{ inputs.git_ref || github.ref }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+        with:
+          driver: docker-container
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load config file
+        id: config
+        run: |
+          set -euo pipefail
+          source scripts/common.sh
+          load_config_file
+          IMAGE_NAME="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}"
+          MANIFEST_VERSION_TAG="${IMAGE_NAME}:${BASE_ALIAS}-${AICAGE_VERSION}"
+          MANIFEST_LATEST_TAG="${IMAGE_NAME}:${BASE_ALIAS}"
+          IMAGE_VERSION_TAG="${MANIFEST_VERSION_TAG}-${ARCH_SUFFIX}"
+          IMAGE_LATEST_TAG="${MANIFEST_LATEST_TAG}-${ARCH_SUFFIX}"
+          IMAGE_TEST_TAG="${IMAGE_VERSION_TAG}-test"
+          {
+            echo "IMAGE_NAME=${IMAGE_NAME}"
+            echo "IMAGE_VERSION_TAG=${IMAGE_VERSION_TAG}"
+            echo "IMAGE_LATEST_TAG=${IMAGE_LATEST_TAG}"
+            echo "IMAGE_TEST_TAG=${IMAGE_TEST_TAG}"
+            echo "FROM_IMAGE=$(get_base_field "${BASE_ALIAS}" from_image)"
+            echo "OS_INSTALLER=$(get_base_build_field "${BASE_ALIAS}" os_installer)"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "IMAGE_NAME=${IMAGE_NAME}"
+            echo "IMAGE_VERSION_TAG=${IMAGE_VERSION_TAG}"
+            echo "IMAGE_LATEST_TAG=${IMAGE_LATEST_TAG}"
+            echo "IMAGE_TEST_TAG=${IMAGE_TEST_TAG}"
+            echo "FROM_IMAGE=$(get_base_field "${BASE_ALIAS}" from_image)"
+            echo "OS_INSTALLER=$(get_base_build_field "${BASE_ALIAS}" os_installer)"
+          } >> "$GITHUB_ENV"
+
+      - name: Build test image tag
+        id: build_image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          provenance: true
+          build-args: |
+            FROM_IMAGE=${{ env.FROM_IMAGE }}
+            OS_INSTALLER=${{ env.OS_INSTALLER }}
+          tags: |
+            ${{ env.IMAGE_TEST_TAG }}
+          labels: |
+            org.opencontainers.image.description=Base image for aicage (${{ env.BASE_ALIAS }})
+
+      - name: "Test: Pull base image for local tests"
+        run: |
+          set -euo pipefail
+          docker pull "${IMAGE_NAME}@${{ steps.build_image.outputs.digest }}"
+
+      - name: "Test: Setup BATS testing framework"
+        uses: mig4/setup-bats@v1.2.0
+
+      - name: "Test: Run smoke suites on base image"
+        run: |
+          set -euo pipefail
+          scripts/test.sh \
+            --image "${IMAGE_NAME}@${{ steps.build_image.outputs.digest }}" \
+            --base "${BASE_ALIAS}"
+
+      - name: Export digest (amd64)
+        id: out-amd64
+        if: matrix.arch == 'amd64'
+        run: |
+          set -euo pipefail
+          (
+            echo "INDEX_DIGEST=${{ steps.build_image.outputs.digest }}"
+          ) | tee /dev/stderr >> "$GITHUB_OUTPUT"
+
+      - name: Export digest (arm64)
+        id: out-arm64
+        if: matrix.arch == 'arm64'
+        run: |
+          set -euo pipefail
+          (
+            echo "INDEX_DIGEST=${{ steps.build_image.outputs.digest }}"
+          ) | tee /dev/stderr >> "$GITHUB_OUTPUT"
+
+  multiarch:
+    name: Run multi-arch sign/provenance/publish
+    needs: build
+    uses: aicage/github-actions/.github/workflows/multiarch-image-build-sign-provenance.yml@0.2.0
+    with:
+      image_ref: ${{ inputs.image }}
+      version_tag: ${{ inputs.aicage_version }}
+      purpose_tag: agent-version
+      index_digest_amd64: ${{ needs.build.outputs.INDEX_DIGEST_amd64 }}
+      index_digest_arm64: ${{ needs.build.outputs.INDEX_DIGEST_arm64 }}
+      actions_ref: 0.2.0
+    secrets: inherit

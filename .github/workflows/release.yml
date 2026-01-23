@@ -6,13 +6,15 @@ run-name: Release (${{ github.ref_name }})
     tags:
       - "*"
 
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  actions: read
+
 jobs:
   build-images:
     uses: ./.github/workflows/build-all-images.yml
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
 
   release:
     runs-on: ubuntu-latest
