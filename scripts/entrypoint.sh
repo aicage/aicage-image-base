@@ -18,7 +18,10 @@ replace_symlink() {
   local link_path="$2"
 
   if [[ -e "${link_path}" || -L "${link_path}" ]]; then
-    rm -rf "${link_path}"
+    local timestamp backup_path
+    timestamp="$(date +%Y%m%d%H%M%S%N)"
+    backup_path="${link_path}.${timestamp}"
+    mv "${link_path}" "${backup_path}"
   fi
   ln -sfn "${target_path}" "${link_path}"
 }
