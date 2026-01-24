@@ -173,8 +173,8 @@ jobs:
     uses: aicage/github-actions/.github/workflows/multiarch-image-build-sign-provenance.yml@0.2.0
     with:
       image_ref: ${{ inputs.image }}
-      version_tag: ${{ inputs.aicage_version }}
-      purpose_tag: agent-version
+      version_tag: ${{ inputs.base }}-${{ inputs.aicage_version }}
+      purpose_tag: ${{ inputs.base }}
       index_digest_amd64: ${{ needs.build.outputs.INDEX_DIGEST_amd64 }}
       index_digest_arm64: ${{ needs.build.outputs.INDEX_DIGEST_arm64 }}
       actions_ref: 0.2.0
