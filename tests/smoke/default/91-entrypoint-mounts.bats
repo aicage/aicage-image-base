@@ -127,6 +127,37 @@ cleanup_mount_dir() {
   [[ "$output" == *"ssh-data"* ]]
 }
 
+@test "agent config mounts are symlinked into home" {
+  host_dir="$(mktemp -d)"
+  trap 'cleanup_mount_dir "${host_dir}"' RETURN
+  chmod 755 "${host_dir}"
+  mkdir -p "${host_dir}/claude"
+  printf 'dir-data\n' >"${host_dir}/claude/config"
+  printf 'file-data\n' >"${host_dir}/claude.json"
+  chmod 755 "${host_dir}/claude"
+  chmod 644 "${host_dir}/claude/config" "${host_dir}/claude.json"
+
+  run docker run --rm \
+    -v "${host_dir}/claude:/aicage/agent-config/.claude" \
+    -v "${host_dir}/claude.json:/aicage/agent-config/.claude.json" \
+    --env AICAGE_UID=4242 \
+    --env AICAGE_GID=4243 \
+    --env AICAGE_USER=agent \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      [[ -L ${HOME}/.claude ]]
+      [[ -L ${HOME}/.claude.json ]]
+      [[ $(readlink -f ${HOME}/.claude) == "/aicage/agent-config/.claude" ]]
+      [[ $(readlink -f ${HOME}/.claude.json) == "/aicage/agent-config/.claude.json" ]]
+      cat ${HOME}/.claude/config
+      cat ${HOME}/.claude.json
+    '
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"dir-data"* ]]
+  [[ "$output" == *"file-data"* ]]
+}
+
 @test "skel is not copied when /home is a mountpoint" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
