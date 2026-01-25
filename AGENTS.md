@@ -18,7 +18,7 @@ use `DEVELOPMENT.md` for full build/test instructions.
 
 ## Adding or updating bases
 
-- Steps live in `DEVELOPMENT.md` (`bases/<alias>/base.yaml` plus any installer tweaks).
+- Steps live in `DEVELOPMENT.md` (`bases/<alias>/base.yml` plus any installer tweaks).
 - Ensure smoke coverage exists for new or changed bases in `tests/smoke/`.
 
 ## Notes

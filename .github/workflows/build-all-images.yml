@@ -91,13 +91,13 @@ jobs:
         run: |
           check-jsonschema \
             --schemafile doc/validation/config.schema.json \
-            config.yaml
+            config.yml
           check-jsonschema \
             --schemafile doc/validation/base.schema.json \
-            bases/*/base.yaml
+            bases/*/base.yml
           check-jsonschema \
             --schemafile doc/validation/base-build.schema.json \
-            bases/*/base-build.yaml
+            bases/*/base-build.yml
 
   matrix:
     name: Build matrix for ${{ needs.resolve-ref.outputs.GIT_REF }}

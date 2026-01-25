@@ -23,7 +23,7 @@ curl_wrapper() {
 }
 
 load_config_file() {
-  local config_file="${ROOT_DIR}/config.yaml"
+  local config_file="${ROOT_DIR}/config.yml"
   [[ -f "${config_file}" ]] || _die "Config file not found: ${config_file}"
 
   while IFS=$'\t' read -r key value; do
@@ -54,11 +54,11 @@ _read_yaml_field() {
 get_base_field() {
   local alias="$1"
   local field="$2"
-  _read_yaml_field "${alias}" "${field}" base.yaml
+  _read_yaml_field "${alias}" "${field}" base.yml
 }
 
 get_base_build_field() {
   local alias="$1"
   local field="$2"
-  _read_yaml_field "${alias}" "${field}" base-build.yaml
+  _read_yaml_field "${alias}" "${field}" base-build.yml
 }

@@ -9,7 +9,7 @@ OS, tweaking packages, or validating the base matrix.
 - QEMU/binfmt for multi-arch builds.
 - Bats (`bats --version`) for smoke suites.
 - Python 3.11+ with `pip install -r requirements-dev.txt` to pull lint/test tooling.
-- `yq` is required by some scripts that parse `base.yaml`.
+- `yq` is required by some scripts that parse `base.yml`.
 
 ## Setup
 
@@ -20,15 +20,15 @@ pip install -r requirements-dev.txt
 
 ## Repo layout
 
-- `bases/<alias>/base.yaml` — Defines the upstream image and installer for each base.
+- `bases/<alias>/base.yml` — Defines the upstream image and installer for each base.
 - `Dockerfile` — Docker build entrypoint.
 - `scripts/` — Build/test helpers.
 - `tests/smoke/` — Bats suites for base images.
-- `config.yaml` — Default repository, version, and platform settings.
+- `config.yml` — Default repository, version, and platform settings.
 
 ## Configuration
 
-Setting from `config.yaml`:
+Setting from `config.yml`:
 
 - `AICAGE_IMAGE_REGISTRY` (default `ghcr.io`)
 - `AICAGE_IMAGE_BASE_REPOSITORY` (default `aicage/aicage-image-base`)
@@ -57,7 +57,7 @@ Smoke suites live in `tests/smoke/` (including subfolders); run individual files
 
 ## Adding a base
 
-1. Create `bases/<alias>/base.yaml` with `from_image` and `os_installer`.
+1. Create `bases/<alias>/base.yml` with `from_image` and `os_installer`.
 2. Add or adjust installer scripts if the base needs extra setup.
 3. Update smoke coverage under `tests/smoke/` if the new base requires validation.
 4. Document the new base in `README.md` if it should be visible to users.
