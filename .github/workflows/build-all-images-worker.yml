@@ -1,0 +1,126 @@
+name: Build All Base Images
+run-name: Build all base images (${{ github.ref_name }})
+
+"on":
+  workflow_call: {}
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Base alias to build (matches bases/<alias>)
+        required: false
+        type: string
+
+concurrency:
+  group: build-base-images-${{ github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  actions: read
+
+jobs:
+  lint:
+    name: Lint for ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: "Test: Set up Python"
+        uses: actions/setup-python@v6.1.0
+        with:
+          python-version: "3.x"
+
+      - name: "Test: Remove Python yq and keep using Go yq"
+        run: |
+          python -m pip uninstall -y yq
+
+      - name: "Test: Install lint deps"
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: "Test: Run linters (yamllint, ruff, pymarkdown)"
+        run: |
+          yamllint .
+          ruff check .
+          pymarkdown --config .pymarkdown.json scan --recurse --exclude './.venv/' .
+
+      - name: "Test: Validate config and bases with schemas"
+        run: |
+          check-jsonschema \
+            --schemafile doc/validation/config.schema.json \
+            config.yml
+          check-jsonschema \
+            --schemafile doc/validation/base.schema.json \
+            bases/*/base.yml
+          check-jsonschema \
+            --schemafile doc/validation/base-build.schema.json \
+            bases/*/base-build.yml
+
+  matrix:
+    name: Build matrix for ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    env:
+      INPUT_BASE: ${{ github.event.inputs.base }}
+      ROOT_DIR: ${{ github.workspace }}
+    outputs:
+      MATRIX_BASES: ${{ steps.set-matrix.outputs.MATRIX_BASES }}
+      IMAGE_REF: ${{ steps.set-matrix.outputs.IMAGE_REF }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Generate build matrix
+        id: set-matrix
+        run: |
+          set -euo pipefail
+          source scripts/common.sh
+          load_config_file
+          bases=()
+          if [[ -n "${INPUT_BASE}" ]]; then
+            if [[ ! -d "bases/${INPUT_BASE}" ]]; then
+              echo "Base '${INPUT_BASE}' not found under bases/" >&2
+              exit 1
+            fi
+            bases=("${INPUT_BASE}")
+          else
+            mapfile -t bases < <(ls -1 bases)
+          fi
+
+          bases_file="$(mktemp)"
+          echo '{"include":[]}' > "${bases_file}"
+
+          for base_alias in "${bases[@]}"; do
+            jq -c \
+              --arg base "${base_alias}" \
+              '.include += [{"base": $base}]' \
+              "${bases_file}" > "${bases_file}.tmp"
+            mv "${bases_file}.tmp" "${bases_file}"
+          done
+
+          echo "Base matrix:"
+          jq '.' "${bases_file}"
+
+          bases_json="$(cat "${bases_file}")"
+          image_ref="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}"
+          {
+            echo "MATRIX_BASES=${bases_json}"
+            echo "IMAGE_REF=${image_ref}"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.base }} for ${{ github.ref_name }}
+    needs: [lint, matrix]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix.outputs.MATRIX_BASES) }}
+    uses: ./.github/workflows/build-base.yml
+    with:
+      base: ${{ matrix.base }}
+      git_ref: ${{ github.ref_name }}
+      aicage_version: ${{ github.ref_name }}
+      image: ${{ needs.matrix.outputs.IMAGE_REF }}
+    secrets: inherit

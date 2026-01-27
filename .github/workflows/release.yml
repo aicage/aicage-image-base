@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build-images:
-    uses: ./.github/workflows/build-all-images.yml
+    uses: ./.github/workflows/build-all-images-worker.yml
 
   release:
     runs-on: ubuntu-latest
