@@ -3,6 +3,7 @@
 @test "docker socket gid group is created and user can run docker" {
   docker_sock_gid="$(stat -c '%g' /var/run/docker.sock)"
   run docker run --rm \
+    --env AICAGE_WORKSPACE=/workspace \
     -v /var/run/docker.sock:/var/run/docker.sock \
     --env AICAGE_UID=1234 \
     --env AICAGE_GID="${docker_sock_gid}" \

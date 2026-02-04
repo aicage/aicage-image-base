@@ -17,141 +17,155 @@ cleanup_mount_dir() {
   rm -rf "${dir}" >/dev/null 2>&1 || true
 }
 
-@test "gitconfig mount is symlinked into home and git config" {
+@test "home file mount is symlinked into /home/<host-user>" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
-  printf '[user]\n  name = example\n' >"${host_dir}/gitconfig"
-  chmod 644 "${host_dir}/gitconfig"
+  printf 'file-data\n' >"${host_dir}/.aicage-test-file"
+  chmod 644 "${host_dir}/.aicage-test-file"
 
   run docker run --rm \
-    -v "${host_dir}:/aicage/host:ro" \
+    --env AICAGE_WORKSPACE=/workspace \
+    -v "${host_dir}/.aicage-test-file:/aicage/user-home/.aicage-test-file:ro" \
     --env AICAGE_UID=1234 \
     --env AICAGE_GID=2345 \
     --env AICAGE_USER=demo \
+    --env AICAGE_HOST_USER=hoster \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
-      [[ -L ${HOME}/.gitconfig ]]
-      [[ -L ${HOME}/.config/git/config ]]
-      [[ $(readlink -f ${HOME}/.gitconfig) == "/aicage/host/gitconfig" ]]
-      [[ $(readlink -f ${HOME}/.config/git/config) == "/aicage/host/gitconfig" ]]
-      cat ${HOME}/.gitconfig
+      [[ -L /home/hoster/.aicage-test-file ]]
+      [[ $(readlink -f /home/hoster/.aicage-test-file) == "/aicage/user-home/.aicage-test-file" ]]
+      cat /home/hoster/.aicage-test-file
     '
   [ "$status" -eq 0 ]
-  [[ "$output" == *"name = example"* ]]
+  [[ "$output" == *"file-data"* ]]
 }
 
-@test "gitconfig mount is symlinked into root home" {
+@test "home file mount is symlinked into /root and /home/<host-user>" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
-  printf '[user]\n  name = example\n' >"${host_dir}/gitconfig"
-  chmod 644 "${host_dir}/gitconfig"
+  printf 'file-data\n' >"${host_dir}/.aicage-test-file"
+  chmod 644 "${host_dir}/.aicage-test-file"
 
   run docker run --rm \
-    -v "${host_dir}:/aicage/host:ro" \
+    --env AICAGE_WORKSPACE=/workspace \
+    -v "${host_dir}/.aicage-test-file:/aicage/user-home/.aicage-test-file:ro" \
     --env AICAGE_UID=0 \
     --env AICAGE_GID=0 \
     --env AICAGE_USER=demo \
+    --env AICAGE_HOST_USER=hoster \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
-      [[ -L /root/.gitconfig ]]
-      [[ -L /root/.config/git/config ]]
-      [[ $(readlink -f /root/.gitconfig) == "/aicage/host/gitconfig" ]]
-      [[ $(readlink -f /root/.config/git/config) == "/aicage/host/gitconfig" ]]
-      cat /root/.gitconfig
+      [[ -L /root/.aicage-test-file ]]
+      [[ -L /home/hoster/.aicage-test-file ]]
+      [[ $(readlink -f /root/.aicage-test-file) == "/aicage/user-home/.aicage-test-file" ]]
+      [[ $(readlink -f /home/hoster/.aicage-test-file) == "/aicage/user-home/.aicage-test-file" ]]
+      cat /root/.aicage-test-file
     '
   [ "$status" -eq 0 ]
-  [[ "$output" == *"name = example"* ]]
+  [[ "$output" == *"file-data"* ]]
 }
 
-@test "gnupg and ssh mounts are symlinked into home" {
+@test "home dir mounts are symlinked into /home/<host-user>" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
-  mkdir -p "${host_dir}/gnupg" "${host_dir}/ssh"
-  chmod 755 "${host_dir}/gnupg" "${host_dir}/ssh"
-  printf 'gnupg-data\n' >"${host_dir}/gnupg/config"
-  printf 'ssh-data\n' >"${host_dir}/ssh/known_hosts"
-  chmod 644 "${host_dir}/gnupg/config" "${host_dir}/ssh/known_hosts"
+  mkdir -p "${host_dir}/dir-a" "${host_dir}/dir-b"
+  chmod 755 "${host_dir}/dir-a" "${host_dir}/dir-b"
+  printf 'dir-a\n' >"${host_dir}/dir-a/config"
+  printf 'dir-b\n' >"${host_dir}/dir-b/known_hosts"
+  chmod 644 "${host_dir}/dir-a/config" "${host_dir}/dir-b/known_hosts"
 
   run docker run --rm \
-    -v "${host_dir}:/aicage/host:ro" \
+    --env AICAGE_WORKSPACE=/workspace \
+    -v "${host_dir}/dir-a:/aicage/user-home/.aicage-test-dir-a:ro" \
+    -v "${host_dir}/dir-b:/aicage/user-home/.aicage-test-dir-b:ro" \
     --env AICAGE_UID=5678 \
     --env AICAGE_GID=6789 \
     --env AICAGE_USER=agent \
+    --env AICAGE_HOST_USER=hoster \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
-      [[ -L ${HOME}/.gnupg ]]
-      [[ -L ${HOME}/.ssh ]]
-      [[ $(readlink -f ${HOME}/.gnupg) == "/aicage/host/gnupg" ]]
-      [[ $(readlink -f ${HOME}/.ssh) == "/aicage/host/ssh" ]]
-      cat ${HOME}/.gnupg/config
-      cat ${HOME}/.ssh/known_hosts
+      [[ -L /home/hoster/.aicage-test-dir-a ]]
+      [[ -L /home/hoster/.aicage-test-dir-b ]]
+      [[ $(readlink -f /home/hoster/.aicage-test-dir-a) == "/aicage/user-home/.aicage-test-dir-a" ]]
+      [[ $(readlink -f /home/hoster/.aicage-test-dir-b) == "/aicage/user-home/.aicage-test-dir-b" ]]
+      cat /home/hoster/.aicage-test-dir-a/config
+      cat /home/hoster/.aicage-test-dir-b/known_hosts
     '
   [ "$status" -eq 0 ]
-  [[ "$output" == *"gnupg-data"* ]]
-  [[ "$output" == *"ssh-data"* ]]
+  [[ "$output" == *"dir-a"* ]]
+  [[ "$output" == *"dir-b"* ]]
 }
 
-@test "gnupg and ssh mounts are symlinked into root home" {
+@test "home dir mounts are symlinked into /root and /home/<host-user>" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
-  mkdir -p "${host_dir}/gnupg" "${host_dir}/ssh"
-  chmod 755 "${host_dir}/gnupg" "${host_dir}/ssh"
-  printf 'gnupg-data\n' >"${host_dir}/gnupg/config"
-  printf 'ssh-data\n' >"${host_dir}/ssh/known_hosts"
-  chmod 644 "${host_dir}/gnupg/config" "${host_dir}/ssh/known_hosts"
+  mkdir -p "${host_dir}/dir-a" "${host_dir}/dir-b"
+  chmod 755 "${host_dir}/dir-a" "${host_dir}/dir-b"
+  printf 'dir-a\n' >"${host_dir}/dir-a/config"
+  printf 'dir-b\n' >"${host_dir}/dir-b/known_hosts"
+  chmod 644 "${host_dir}/dir-a/config" "${host_dir}/dir-b/known_hosts"
 
   run docker run --rm \
-    -v "${host_dir}:/aicage/host:ro" \
+    --env AICAGE_WORKSPACE=/workspace \
+    -v "${host_dir}/dir-a:/aicage/user-home/.aicage-test-dir-a:ro" \
+    -v "${host_dir}/dir-b:/aicage/user-home/.aicage-test-dir-b:ro" \
     --env AICAGE_UID=0 \
     --env AICAGE_GID=0 \
     --env AICAGE_USER=demo \
+    --env AICAGE_HOST_USER=hoster \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
-      [[ -L /root/.gnupg ]]
-      [[ -L /root/.ssh ]]
-      [[ $(readlink -f /root/.gnupg) == "/aicage/host/gnupg" ]]
-      [[ $(readlink -f /root/.ssh) == "/aicage/host/ssh" ]]
-      cat /root/.gnupg/config
-      cat /root/.ssh/known_hosts
+      [[ -L /root/.aicage-test-dir-a ]]
+      [[ -L /root/.aicage-test-dir-b ]]
+      [[ -L /home/hoster/.aicage-test-dir-a ]]
+      [[ -L /home/hoster/.aicage-test-dir-b ]]
+      [[ $(readlink -f /root/.aicage-test-dir-a) == "/aicage/user-home/.aicage-test-dir-a" ]]
+      [[ $(readlink -f /root/.aicage-test-dir-b) == "/aicage/user-home/.aicage-test-dir-b" ]]
+      [[ $(readlink -f /home/hoster/.aicage-test-dir-a) == "/aicage/user-home/.aicage-test-dir-a" ]]
+      [[ $(readlink -f /home/hoster/.aicage-test-dir-b) == "/aicage/user-home/.aicage-test-dir-b" ]]
+      cat /root/.aicage-test-dir-a/config
+      cat /root/.aicage-test-dir-b/known_hosts
     '
   [ "$status" -eq 0 ]
-  [[ "$output" == *"gnupg-data"* ]]
-  [[ "$output" == *"ssh-data"* ]]
+  [[ "$output" == *"dir-a"* ]]
+  [[ "$output" == *"dir-b"* ]]
 }
 
-@test "agent config mounts are symlinked into home" {
+@test "home dir and file mounts are symlinked into /home/<host-user>" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
-  mkdir -p "${host_dir}/claude"
-  printf 'dir-data\n' >"${host_dir}/claude/config"
-  printf 'file-data\n' >"${host_dir}/claude.json"
-  chmod 755 "${host_dir}/claude"
-  chmod 644 "${host_dir}/claude/config" "${host_dir}/claude.json"
+  mkdir -p "${host_dir}/dir-a"
+  printf 'dir-data\n' >"${host_dir}/dir-a/config"
+  printf 'file-data\n' >"${host_dir}/file-a"
+  chmod 755 "${host_dir}/dir-a"
+  chmod 644 "${host_dir}/dir-a/config" "${host_dir}/file-a"
 
   run docker run --rm \
-    -v "${host_dir}/claude:/aicage/agent-config/.claude" \
-    -v "${host_dir}/claude.json:/aicage/agent-config/.claude.json" \
+    --env AICAGE_WORKSPACE=/workspace \
+    -v "${host_dir}/dir-a:/aicage/user-home/.aicage-test-dir:ro" \
+    -v "${host_dir}/file-a:/aicage/user-home/.aicage-test-file:ro" \
     --env AICAGE_UID=4242 \
     --env AICAGE_GID=4243 \
     --env AICAGE_USER=agent \
+    --env AICAGE_HOST_USER=hoster \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
-      [[ -L ${HOME}/.claude ]]
-      [[ -L ${HOME}/.claude.json ]]
-      [[ $(readlink -f ${HOME}/.claude) == "/aicage/agent-config/.claude" ]]
-      [[ $(readlink -f ${HOME}/.claude.json) == "/aicage/agent-config/.claude.json" ]]
-      cat ${HOME}/.claude/config
-      cat ${HOME}/.claude.json
+      [[ -L /home/hoster/.aicage-test-dir ]]
+      [[ -L /home/hoster/.aicage-test-file ]]
+      [[ $(readlink -f /home/hoster/.aicage-test-dir) == "/aicage/user-home/.aicage-test-dir" ]]
+      [[ $(readlink -f /home/hoster/.aicage-test-file) == "/aicage/user-home/.aicage-test-file" ]]
+      cat /home/hoster/.aicage-test-dir/config
+      cat /home/hoster/.aicage-test-file
     '
   [ "$status" -eq 0 ]
   [[ "$output" == *"dir-data"* ]]
@@ -165,6 +179,7 @@ cleanup_mount_dir() {
   chmod 755 "${host_dir}" "${host_dir}/demo"
 
   run docker run --rm \
+    --env AICAGE_WORKSPACE=/workspace \
     -v "${host_dir}:/home" \
     --entrypoint /bin/bash \
     --env AICAGE_UID=1234 \
@@ -185,6 +200,7 @@ cleanup_mount_dir() {
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
 
   run docker run --rm \
+    --env AICAGE_WORKSPACE=/workspace \
     -v "${host_dir}:/home/demo/work" \
     --entrypoint /bin/bash \
     --env AICAGE_UID=1234 \

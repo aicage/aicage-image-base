@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-@test "workspace defaults to /workspace" {
+@test "workspace must be set" {
   run docker run --rm \
     --env AICAGE_UID=1234 \
     --env AICAGE_GID=2345 \
@@ -10,12 +10,7 @@
       set -euo pipefail
       printf "%s\n%s\n" "${AICAGE_WORKSPACE}" "${PWD}"
     '
-  [ "$status" -eq 0 ]
-  mapfile -t lines <<<"${output}"
-  workspace="${lines[0]}"
-  pwd="${lines[1]}"
-  [[ "${workspace}" == "/workspace" ]]
-  [[ "${pwd}" == "/workspace" ]]
+  [ "$status" -ne 0 ]
 }
 
 @test "workspace respects AICAGE_WORKSPACE override" {

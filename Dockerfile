@@ -16,7 +16,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     AICAGE_USER=aicage \
     AICAGE_UID=1000 \
     AICAGE_GID=1000 \
-    AICAGE_WORKSPACE=/workspace \
     NPM_CONFIG_PREFIX=/usr/local \
     PIPX_HOME=/opt/pipx \
     PIPX_BIN_DIR=/opt/pipx/bin \

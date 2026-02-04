@@ -2,6 +2,7 @@
 
 @test "test_runtime_user_creation" {
   run docker run --rm \
+    --env AICAGE_WORKSPACE=/workspace \
     --env AICAGE_UID=1234 \
     --env AICAGE_GID=2345 \
     --env AICAGE_USER=demo \
@@ -22,6 +23,7 @@
 
 @test "existing uid/gid are renamed to target user/group" {
   run docker run --rm \
+    --env AICAGE_WORKSPACE=/workspace \
     --entrypoint /bin/bash \
     --env AICAGE_UID=1000 \
     --env AICAGE_GID=1000 \
@@ -58,6 +60,7 @@
 
 @test "uid 0 forces root user and home" {
   run docker run --rm \
+    --env AICAGE_WORKSPACE=/workspace \
     --env AICAGE_UID=0 \
     --env AICAGE_GID=0 \
     --env AICAGE_USER=demo \

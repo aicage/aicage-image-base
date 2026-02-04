@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ -z "${AICAGE_WORKSPACE:-}" ]]; then
-  AICAGE_WORKSPACE="/workspace"
-fi
-
 is_mountpoint() {
   local path="$1"
   local parent
@@ -62,42 +58,39 @@ set_target_env() {
   export PATH="${HOME}/.local/bin:${PATH}"
 }
 
-setup_agent_config_links() {
-  local base_mount mountinfo raw_mount mount_point relative_path target_path
-
-  base_mount="/aicage/agent-config"
+setup_home_mount_links() {
+  local home_root host_user root_target user_target mountinfo
+  home_root="/aicage/user-home"
+  host_user="${AICAGE_HOST_USER:-}"
+  root_target="/root"
+  user_target=""
   mountinfo="/proc/self/mountinfo"
+
   [ -r "${mountinfo}" ] || return 0
+  if [[ ! -d "${home_root}" ]]; then
+    return 0
+  fi
 
-  while IFS= read -r raw_mount; do
-    mount_point="$(printf '%b' "${raw_mount}")"
-    if [[ "${mount_point}" == "${base_mount}" ]]; then
+  if [[ -n "${host_user}" ]]; then
+    user_target="/home/${host_user}"
+  fi
+
+  while IFS= read -r mount_point; do
+    local rel_path root_link user_link
+    if [[ "${mount_point}" == "${home_root}" ]]; then
       continue
     fi
-    relative_path="${mount_point#${base_mount}/}"
-    if [[ "${relative_path}" == "${mount_point}" ]]; then
-      continue
+    rel_path="${mount_point#${home_root}/}"
+    root_link="${root_target}/${rel_path}"
+    mkdir -p "$(dirname "${root_link}")"
+    replace_symlink "${mount_point}" "${root_link}"
+
+    if [[ -n "${user_target}" ]]; then
+      user_link="${user_target}/${rel_path}"
+      mkdir -p "$(dirname "${user_link}")"
+      replace_symlink "${mount_point}" "${user_link}"
     fi
-    target_path="${TARGET_HOME}/${relative_path}"
-    mkdir -p "$(dirname "${target_path}")"
-    replace_symlink "${mount_point}" "${target_path}"
-  done < <(awk -v base="${base_mount}" '$5 ~ "^"base {print $5}' "${mountinfo}")
-}
-
-setup_host_symlinks() {
-  if [[ -e "/aicage/host/gitconfig" ]]; then
-    mkdir -p "${TARGET_HOME}/.config/git"
-    replace_symlink "/aicage/host/gitconfig" "${TARGET_HOME}/.gitconfig"
-    replace_symlink "/aicage/host/gitconfig" "${TARGET_HOME}/.config/git/config"
-  fi
-
-  if [[ -e "/aicage/host/gnupg" ]]; then
-    replace_symlink "/aicage/host/gnupg" "${TARGET_HOME}/.gnupg"
-  fi
-
-  if [[ -e "/aicage/host/ssh" ]]; then
-    replace_symlink "/aicage/host/ssh" "${TARGET_HOME}/.ssh"
-  fi
+  done < <(awk -v base="${home_root}" '$5 ~ "^"base {print $5}' "${mountinfo}")
 }
 
 setup_user_and_group() {
@@ -217,8 +210,7 @@ else
   setup_workspace
 fi
 
-setup_agent_config_links
-setup_host_symlinks
+setup_home_mount_links
 set_target_env "${TARGET_HOME}" "${TARGET_USER}"
 
 cd "${AICAGE_WORKSPACE}"
