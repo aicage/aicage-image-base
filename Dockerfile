@@ -13,7 +13,6 @@ LABEL org.opencontainers.image.title="aicage-image-base" \
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
-    AICAGE_USER=aicage \
     AICAGE_UID=1000 \
     AICAGE_GID=1000 \
     NPM_CONFIG_PREFIX=/usr/local \

@@ -1,6 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# AICAGE entrypoint
+# Required env vars (best-effort defaults are applied):
+# - AICAGE_WORKSPACE: container working directory (defaults to /workspace)
+# - AICAGE_ENTRYPOINT_CMD: command to exec (defaults to bash)
+# - AICAGE_HOST_USER: host username (required on Linux)
+# - AICAGE_UID/AICAGE_GID: linux host user mapping (required on Linux)
+# - AICAGE_HOME: posix host home path
+# - AICAGE_HOST_IS_LINUX: set to non-empty on Linux hosts; empty otherwise
+
+AICAGE_USER_HOME_MOUNTS_DIR="/aicage/user-home"
+
+AICAGE_WORKSPACE="${AICAGE_WORKSPACE:-/workspace}"
+
+if [[ -z "${AICAGE_HOST_IS_LINUX:-}" ]]; then
+  TARGET_USER="root"
+  AICAGE_UID="0"
+  AICAGE_GID="0"
+else
+  TARGET_USER="${AICAGE_HOST_USER:-aicage}"
+  AICAGE_UID="${AICAGE_UID:-1000}"
+  AICAGE_GID="${AICAGE_GID:-1000}"
+fi
+
 is_mountpoint() {
   local path="$1"
   local parent
@@ -58,56 +81,52 @@ set_target_env() {
   export PATH="${HOME}/.local/bin:${PATH}"
 }
 
-setup_home_mount_links() {
-  local home_root host_user root_target user_target mountinfo
-  home_root="/aicage/user-home"
-  host_user="${AICAGE_HOST_USER:-}"
-  root_target="/root"
-  user_target=""
+list_home_mount_points() {
+  local mountinfo
   mountinfo="/proc/self/mountinfo"
-
   [ -r "${mountinfo}" ] || return 0
-  if [[ ! -d "${home_root}" ]]; then
-    return 0
-  fi
+  # /proc/self/mountinfo format:
+  # field 5 is the mount point path
+  # we only want mount points under /aicage/user-home
+  awk -v base="${AICAGE_USER_HOME_MOUNTS_DIR}" '$5 ~ "^"base {print $5}' "${mountinfo}"
+}
 
-  if [[ -n "${host_user}" ]]; then
-    user_target="/home/${host_user}"
-  fi
+setup_home_mount_links() {
+  local rel_path mount_point host_link root_link
+  [ -d "${AICAGE_USER_HOME_MOUNTS_DIR}" ] || return 0
 
   while IFS= read -r mount_point; do
-    local rel_path root_link user_link
-    if [[ "${mount_point}" == "${home_root}" ]]; then
+    if [[ "${mount_point}" == "${AICAGE_USER_HOME_MOUNTS_DIR}" ]]; then
       continue
     fi
-    rel_path="${mount_point#${home_root}/}"
-    root_link="${root_target}/${rel_path}"
-    mkdir -p "$(dirname "${root_link}")"
-    replace_symlink "${mount_point}" "${root_link}"
+    rel_path="${mount_point#${AICAGE_USER_HOME_MOUNTS_DIR}/}"
+    host_link="${AICAGE_HOME}/${rel_path}"
+    mkdir -p "$(dirname "${host_link}")"
+    replace_symlink "${mount_point}" "${host_link}"
 
-    if [[ -n "${user_target}" ]]; then
-      user_link="${user_target}/${rel_path}"
-      mkdir -p "$(dirname "${user_link}")"
-      replace_symlink "${mount_point}" "${user_link}"
+    if [[ -z "${AICAGE_HOST_IS_LINUX:-}" ]]; then
+      root_link="${TARGET_HOME}/${rel_path}"
+      mkdir -p "$(dirname "${root_link}")"
+      replace_symlink "${mount_point}" "${root_link}"
     fi
-  done < <(awk -v base="${home_root}" '$5 ~ "^"base {print $5}' "${mountinfo}")
+  done < <(list_home_mount_points)
 }
 
 setup_user_and_group() {
   local existing_group_name existing_user_name
 
-  existing_group_name="$(getent group "${TARGET_GID}" | cut -d: -f1 || true)"
+  existing_group_name="$(getent group "${AICAGE_GID}" | cut -d: -f1 || true)"
   if [[ -n "${existing_group_name}" && "${existing_group_name}" != "${TARGET_USER}" && "${existing_group_name}" != "docker" ]]; then
     if ! getent group "${TARGET_USER}" >/dev/null; then
       groupmod -n "${TARGET_USER}" "${existing_group_name}"
     fi
   fi
 
-  if ! getent group "${TARGET_GID}" >/dev/null; then
-    groupadd -g "${TARGET_GID}" "${TARGET_USER}"
+  if ! getent group "${AICAGE_GID}" >/dev/null; then
+    groupadd -g "${AICAGE_GID}" "${TARGET_USER}"
   fi
 
-  existing_user_name="$(getent passwd "${TARGET_UID}" | cut -d: -f1 || true)"
+  existing_user_name="$(getent passwd "${AICAGE_UID}" | cut -d: -f1 || true)"
   if [[ -n "${existing_user_name}" && "${existing_user_name}" != "${TARGET_USER}" ]]; then
     if ! getent passwd "${TARGET_USER}" >/dev/null; then
       usermod -l "${TARGET_USER}" "${existing_user_name}"
@@ -116,10 +135,10 @@ setup_user_and_group() {
 }
 
 setup_home() {
-  local home_parent home_dir home_parent_is_mount home_dir_is_mount
+  local create_home copy_skel home_parent home_dir home_parent_is_mount home_dir_is_mount
 
-  CREATE_HOME="--no-create-home"
-  COPY_SKEL="false"
+  create_home="--no-create-home"
+  copy_skel="false"
   home_parent="/home"
   home_dir="/home/${TARGET_USER}"
   home_parent_is_mount="false"
@@ -134,26 +153,26 @@ setup_home() {
   fi
 
   if [[ "${home_parent_is_mount}" == "true" || "${home_dir_is_mount}" == "true" ]]; then
-    CREATE_HOME="--no-create-home"
-    COPY_SKEL="false"
+    create_home="--no-create-home"
+    copy_skel="false"
   elif [ -d "${home_dir}" ]; then
-    CREATE_HOME="--no-create-home"
-    COPY_SKEL="true"
+    create_home="--no-create-home"
+    copy_skel="true"
   else
-    CREATE_HOME="--create-home"
-    COPY_SKEL="false"
+    create_home="--create-home"
+    copy_skel="false"
   fi
 
-  if ! getent passwd "${TARGET_UID}" >/dev/null; then
-    useradd "${CREATE_HOME}" -u "${TARGET_UID}" -g "${TARGET_GID}" -s /bin/bash "${TARGET_USER}"
+  if ! getent passwd "${AICAGE_UID}" >/dev/null; then
+    useradd "${create_home}" -u "${AICAGE_UID}" -g "${AICAGE_GID}" -s /bin/bash "${TARGET_USER}"
   fi
 
-  TARGET_USER="$(getent passwd "${TARGET_UID}" | cut -d: -f1)"
-  TARGET_HOME="$(getent passwd "${TARGET_UID}" | cut -d: -f6)"
+  TARGET_USER="$(getent passwd "${AICAGE_UID}" | cut -d: -f1)"
+  TARGET_HOME="$(getent passwd "${AICAGE_UID}" | cut -d: -f6)"
   TARGET_HOME="${TARGET_HOME:-/home/${TARGET_USER}}"
 
-  if [[ "${COPY_SKEL}" == "true" ]]; then
-    copy_skel_if_safe "${TARGET_HOME}" "${TARGET_UID}" "${TARGET_GID}"
+  if [[ "${copy_skel}" == "true" ]]; then
+    copy_skel_if_safe "${TARGET_HOME}" "${AICAGE_UID}" "${AICAGE_GID}"
   fi
 }
 
@@ -182,27 +201,19 @@ setup_docker_group() {
 }
 
 setup_workspace() {
-  mkdir -p "${AICAGE_WORKSPACE}"
-  chown "${TARGET_UID}:${TARGET_GID}" "${AICAGE_WORKSPACE}"
+  if [ -e "${AICAGE_WORKSPACE}" ]; then
+    chown "${AICAGE_UID}:${AICAGE_GID}" "${AICAGE_WORKSPACE}"
+  fi
   if [ -d "${TARGET_HOME}" ]; then
     if ! is_mountpoint "/home" && ! is_mountpoint "${TARGET_HOME}"; then
-      chown "${TARGET_UID}:${TARGET_GID}" "${TARGET_HOME}"
+      chown "${AICAGE_UID}:${AICAGE_GID}" "${TARGET_HOME}"
     fi
   fi
 }
 
 # set up user and group
-TARGET_USER="${AICAGE_USER:-${USER:-aicage}}"
-TARGET_UID="${AICAGE_UID:-${UID:-1000}}"
-TARGET_GID="${AICAGE_GID:-${GID:-0}}"
-
-if [[ "${TARGET_UID}" == "0" ]]; then
-  TARGET_USER="root"
-fi
-
 if [[ "${TARGET_USER}" == "root" ]]; then
   TARGET_HOME="/root"
-  mkdir -p "${AICAGE_WORKSPACE}"
 else
   setup_user_and_group
   setup_home
@@ -210,9 +221,13 @@ else
   setup_workspace
 fi
 
+AICAGE_HOME="${AICAGE_HOME:-${TARGET_HOME}}"
 setup_home_mount_links
 set_target_env "${TARGET_HOME}" "${TARGET_USER}"
 
+if [[ ! -e "${AICAGE_WORKSPACE}" ]]; then
+  mkdir -p "${AICAGE_WORKSPACE}"
+fi
 cd "${AICAGE_WORKSPACE}"
 
 : "${AICAGE_ENTRYPOINT_CMD:=bash}"
@@ -221,5 +236,5 @@ if [[ "${TARGET_USER}" == "root" ]]; then
   exec "${AICAGE_ENTRYPOINT_CMD}" "$@"
 else
   # switch to user
-  exec gosu "${TARGET_UID}" "${AICAGE_ENTRYPOINT_CMD}" "$@"
+  exec gosu "${AICAGE_UID}" "${AICAGE_ENTRYPOINT_CMD}" "$@"
 fi

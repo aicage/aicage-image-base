@@ -5,9 +5,11 @@
   run docker run --rm \
     --env AICAGE_WORKSPACE=/workspace \
     -v /var/run/docker.sock:/var/run/docker.sock \
+    --env AICAGE_HOST_IS_LINUX=true \
     --env AICAGE_UID=1234 \
     --env AICAGE_GID="${docker_sock_gid}" \
-    --env AICAGE_USER=demo \
+    --env AICAGE_HOST_USER=demo \
+    --env AICAGE_HOME=/home/demo \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
