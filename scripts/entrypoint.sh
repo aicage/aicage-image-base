@@ -162,8 +162,8 @@ setup_home() {
 
   create_home="--no-create-home"
   copy_skel="false"
-  home_parent="/home"
-  home_dir="/home/${TARGET_USER}"
+  home_parent="$(dirname "${AICAGE_HOME}")"
+  home_dir="${AICAGE_HOME}"
   home_parent_is_mount="false"
   home_dir_is_mount="false"
 
