@@ -24,6 +24,14 @@ else
   AICAGE_GID="${AICAGE_GID:-1000}"
 fi
 
+if [[ -z "${AICAGE_HOME:-}" ]]; then
+  if [[ "${TARGET_USER}" == "root" ]]; then
+    AICAGE_HOME="/root"
+  else
+    AICAGE_HOME="/home/${TARGET_USER}"
+  fi
+fi
+
 is_mountpoint() {
   local path="$1"
   local parent
@@ -129,7 +137,7 @@ setup_home_mount_links() {
 }
 
 setup_user_and_group() {
-  local existing_group_name existing_user_name existing_user_uid target_group_gid
+  local existing_user_name existing_user_uid existing_group_name
 
   existing_user_uid="$(getent passwd "${TARGET_USER}" | cut -d: -f3 || true)"
   if [[ -n "${existing_user_uid}" && "${existing_user_uid}" != "${AICAGE_UID}" ]]; then
@@ -144,59 +152,16 @@ setup_user_and_group() {
   existing_group_name="$(getent group "${AICAGE_GID}" | cut -d: -f1 || true)"
   if [[ -n "${existing_group_name}" && "${existing_group_name}" != "${TARGET_USER}" && "${existing_group_name}" != "docker" ]]; then
     groupdel "${existing_group_name}"
-    existing_group_name=""
   fi
 
-  if getent group "${TARGET_USER}" >/dev/null; then
-    target_group_gid="$(getent group "${TARGET_USER}" | cut -d: -f3)"
-    if [[ "${target_group_gid}" != "${AICAGE_GID}" && "${existing_group_name}" != "docker" ]]; then
-      groupmod -g "${AICAGE_GID}" "${TARGET_USER}"
-    fi
-  elif [[ -z "${existing_group_name}" ]]; then
+  if ! getent group "${AICAGE_GID}" >/dev/null; then
     groupadd -g "${AICAGE_GID}" "${TARGET_USER}"
   fi
-}
 
-setup_home() {
-  local create_home copy_skel home_parent home_dir home_parent_is_mount home_dir_is_mount
+  useradd --create-home -u "${AICAGE_UID}" -g "${AICAGE_GID}" -d "${AICAGE_HOME}" -s /bin/bash "${TARGET_USER}"
+  TARGET_HOME="${AICAGE_HOME}"
 
-  create_home="--no-create-home"
-  copy_skel="false"
-  home_parent="$(dirname "${AICAGE_HOME}")"
-  home_dir="${AICAGE_HOME}"
-  home_parent_is_mount="false"
-  home_dir_is_mount="false"
-
-  if [ -d "${home_parent}" ] && is_mountpoint "${home_parent}"; then
-    home_parent_is_mount="true"
-  fi
-
-  if [ -d "${home_dir}" ] && is_mountpoint "${home_dir}"; then
-    home_dir_is_mount="true"
-  fi
-
-  if [[ "${home_parent_is_mount}" == "true" || "${home_dir_is_mount}" == "true" ]]; then
-    create_home="--no-create-home"
-    copy_skel="false"
-  elif [ -d "${home_dir}" ]; then
-    create_home="--no-create-home"
-    copy_skel="true"
-  else
-    create_home="--create-home"
-    copy_skel="false"
-  fi
-
-  if ! getent passwd "${AICAGE_UID}" >/dev/null; then
-    useradd "${create_home}" -u "${AICAGE_UID}" -g "${AICAGE_GID}" -s /bin/bash "${TARGET_USER}"
-  fi
-
-  TARGET_USER="$(getent passwd "${AICAGE_UID}" | cut -d: -f1)"
-  TARGET_HOME="$(getent passwd "${AICAGE_UID}" | cut -d: -f6)"
-  TARGET_HOME="${TARGET_HOME:-/home/${TARGET_USER}}"
-
-  if [[ "${copy_skel}" == "true" ]]; then
-    copy_skel_if_safe "${TARGET_HOME}" "${AICAGE_UID}" "${AICAGE_GID}"
-  fi
+  copy_skel_if_safe "${AICAGE_HOME}" "${AICAGE_UID}" "${AICAGE_GID}"
 }
 
 setup_docker_group() {
@@ -242,12 +207,10 @@ if [[ "${TARGET_USER}" == "root" ]]; then
   TARGET_HOME="/root"
 else
   setup_user_and_group
-  setup_home
   setup_docker_group
   setup_workspace
 fi
 
-AICAGE_HOME="${AICAGE_HOME:-${TARGET_HOME}}"
 ensure_home_is_not_mounted "${AICAGE_HOME}"
 setup_home_mount_links
 set_target_env "${TARGET_HOME}" "${TARGET_USER}"
