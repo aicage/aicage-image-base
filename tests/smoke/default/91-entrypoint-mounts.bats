@@ -171,7 +171,7 @@ cleanup_mount_dir() {
   [[ "$output" == *"file-data"* ]]
 }
 
-@test "skel is not copied when /home is a mountpoint" {
+@test "refuses to start when /home is a mountpoint" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
   mkdir -p "${host_dir}/demo"
@@ -188,11 +188,32 @@ cleanup_mount_dir() {
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
-      mkdir -p /etc/skel
-      printf "skel\n" >/etc/skel/.skel_test
-      /usr/local/bin/entrypoint.sh -c "set -euo pipefail; test ! -e \"\$HOME/.skel_test\""
+      /usr/local/bin/entrypoint.sh -c "set -euo pipefail; echo ok"
     '
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Refusing to start: home path or parent is a mountpoint:"* ]]
+}
+
+@test "refuses to start when /root is a mountpoint" {
+  host_dir="$(mktemp -d)"
+  trap 'cleanup_mount_dir "${host_dir}"' RETURN
+  chmod 755 "${host_dir}"
+
+  run docker run --rm \
+    --env AICAGE_WORKSPACE=/workspace \
+    -v "${host_dir}:/root" \
+    --entrypoint /bin/bash \
+    --env AICAGE_HOST_IS_LINUX=true \
+    --env AICAGE_UID=1234 \
+    --env AICAGE_GID=2345 \
+    --env AICAGE_HOME=/home/demo \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      /usr/local/bin/entrypoint.sh -c "set -euo pipefail; echo ok"
+    '
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Refusing to start: home path or parent is a mountpoint:"* ]]
 }
 
 @test "skel is copied when home exists and is not a mountpoint" {

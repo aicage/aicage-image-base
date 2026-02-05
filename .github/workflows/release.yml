@@ -44,7 +44,7 @@ jobs:
         run: |
           yamllint .
           ruff check .
-          pymarkdown --config .pymarkdown.json scan --recurse --exclude './.venv/' .
+          pymarkdown --config .pymarkdown.json scan --recurse --exclude '**/.venv*/' .
 
       - name: "Test: Validate config and bases with schemas"
         run: |

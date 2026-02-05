@@ -32,6 +32,22 @@ is_mountpoint() {
   [ "$(stat -c %d "$path" 2>/dev/null)" != "$(stat -c %d "$parent" 2>/dev/null)" ]
 }
 
+ensure_home_is_not_mounted() {
+  local path="$1"
+  local current
+  current="$path"
+  while true; do
+    if [ -e "$current" ] && is_mountpoint "$current"; then
+      echo "Refusing to start: home path or parent is a mountpoint: ${current}" >&2
+      exit 1
+    fi
+    if [ "$current" = "/" ]; then
+      break
+    fi
+    current="$(dirname "$current")"
+  done
+}
+
 replace_symlink() {
   local target_path="$1"
   local link_path="$2"
@@ -113,24 +129,31 @@ setup_home_mount_links() {
 }
 
 setup_user_and_group() {
-  local existing_group_name existing_user_name
+  local existing_group_name existing_user_name existing_user_uid target_group_gid
 
-  existing_group_name="$(getent group "${AICAGE_GID}" | cut -d: -f1 || true)"
-  if [[ -n "${existing_group_name}" && "${existing_group_name}" != "${TARGET_USER}" && "${existing_group_name}" != "docker" ]]; then
-    if ! getent group "${TARGET_USER}" >/dev/null; then
-      groupmod -n "${TARGET_USER}" "${existing_group_name}"
-    fi
-  fi
-
-  if ! getent group "${AICAGE_GID}" >/dev/null; then
-    groupadd -g "${AICAGE_GID}" "${TARGET_USER}"
+  existing_user_uid="$(getent passwd "${TARGET_USER}" | cut -d: -f3 || true)"
+  if [[ -n "${existing_user_uid}" && "${existing_user_uid}" != "${AICAGE_UID}" ]]; then
+    userdel -r "${TARGET_USER}" 2>/dev/null
   fi
 
   existing_user_name="$(getent passwd "${AICAGE_UID}" | cut -d: -f1 || true)"
   if [[ -n "${existing_user_name}" && "${existing_user_name}" != "${TARGET_USER}" ]]; then
-    if ! getent passwd "${TARGET_USER}" >/dev/null; then
-      usermod -l "${TARGET_USER}" "${existing_user_name}"
+    userdel -r "${existing_user_name}" 2>/dev/null
+  fi
+
+  existing_group_name="$(getent group "${AICAGE_GID}" | cut -d: -f1 || true)"
+  if [[ -n "${existing_group_name}" && "${existing_group_name}" != "${TARGET_USER}" && "${existing_group_name}" != "docker" ]]; then
+    groupdel "${existing_group_name}"
+    existing_group_name=""
+  fi
+
+  if getent group "${TARGET_USER}" >/dev/null; then
+    target_group_gid="$(getent group "${TARGET_USER}" | cut -d: -f3)"
+    if [[ "${target_group_gid}" != "${AICAGE_GID}" && "${existing_group_name}" != "docker" ]]; then
+      groupmod -g "${AICAGE_GID}" "${TARGET_USER}"
     fi
+  elif [[ -z "${existing_group_name}" ]]; then
+    groupadd -g "${AICAGE_GID}" "${TARGET_USER}"
   fi
 }
 
@@ -211,6 +234,9 @@ setup_workspace() {
   fi
 }
 
+ensure_home_is_not_mounted "/home"
+ensure_home_is_not_mounted "/root"
+
 # set up user and group
 if [[ "${TARGET_USER}" == "root" ]]; then
   TARGET_HOME="/root"
@@ -222,6 +248,7 @@ else
 fi
 
 AICAGE_HOME="${AICAGE_HOME:-${TARGET_HOME}}"
+ensure_home_is_not_mounted "${AICAGE_HOME}"
 setup_home_mount_links
 set_target_env "${TARGET_HOME}" "${TARGET_USER}"
 

@@ -23,7 +23,7 @@
   [[ "${home}" == "/home/demo" ]]
 }
 
-@test "existing uid/gid are renamed to target user/group" {
+@test "existing uid/gid are replaced by target user/group" {
   run docker run --rm \
     --env AICAGE_WORKSPACE=/workspace \
     --entrypoint /bin/bash \
@@ -51,15 +51,16 @@
       if [[ -z "${existing_user}" ]]; then
         useradd -m -u 1000 -g 1000 -s /bin/bash ubuntu
       fi
-      /usr/local/bin/entrypoint.sh -c "set -euo pipefail; echo \"\$(id -un):\$(id -gn):\$(id -u):\$(id -g)\""
+      /usr/local/bin/entrypoint.sh -c "set -euo pipefail; echo \"\$(id -un):\$(id -gn):\$(id -u):\$(id -g):\${HOME}\"; test ! -d /home/ubuntu"
     '
   [ "$status" -eq 0 ]
   result="$(printf '%s\n' "${output}" | tail -n 1)"
-  IFS=':' read -r user group uid gid <<<"${result}"
+  IFS=':' read -r user group uid gid home <<<"${result}"
   [ "${user}" = "hostuser" ]
   [ "${group}" = "hostuser" ]
   [ "${uid}" -eq 1000 ]
   [ "${gid}" -eq 1000 ]
+  [ "${home}" = "/home/hostuser" ]
 }
 
 @test "uid 0 forces root user and home" {
