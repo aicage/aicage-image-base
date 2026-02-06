@@ -17,7 +17,7 @@ cleanup_mount_dir() {
   rm -rf "${dir}" >/dev/null 2>&1 || true
 }
 
-@test "home file mount is symlinked into /home/<host-user>" {
+@test "home file mount is symlinked into AICAGE_HOME" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
@@ -43,7 +43,7 @@ cleanup_mount_dir() {
   [[ "$output" == *"file-data"* ]]
 }
 
-@test "home file mount is symlinked into /root and /home/<host-user>" {
+@test "home file mount is symlinked into /root and AICAGE_HOME" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
@@ -68,7 +68,7 @@ cleanup_mount_dir() {
   [[ "$output" == *"file-data"* ]]
 }
 
-@test "home dir mounts are symlinked into /home/<host-user>" {
+@test "home dir mounts are symlinked into AICAGE_HOME" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
@@ -102,7 +102,7 @@ cleanup_mount_dir() {
   [[ "$output" == *"dir-b"* ]]
 }
 
-@test "home dir mounts are symlinked into /root and /home/<host-user>" {
+@test "home dir mounts are symlinked into /root and AICAGE_HOME" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
@@ -137,7 +137,7 @@ cleanup_mount_dir() {
   [[ "$output" == *"dir-b"* ]]
 }
 
-@test "home dir and file mounts are symlinked into /home/<host-user>" {
+@test "home dir and file mounts are symlinked into AICAGE_HOME" {
   host_dir="$(mktemp -d)"
   trap 'cleanup_mount_dir "${host_dir}"' RETURN
   chmod 755 "${host_dir}"
@@ -203,7 +203,6 @@ cleanup_mount_dir() {
     --env AICAGE_WORKSPACE=/workspace \
     -v "${host_dir}:/root" \
     --entrypoint /bin/bash \
-    --env AICAGE_HOST_IS_LINUX=true \
     --env AICAGE_UID=1234 \
     --env AICAGE_GID=2345 \
     --env AICAGE_HOME=/home/demo \

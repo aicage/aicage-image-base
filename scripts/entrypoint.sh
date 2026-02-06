@@ -40,6 +40,32 @@ is_mountpoint() {
   [ "$(stat -c %d "$path" 2>/dev/null)" != "$(stat -c %d "$parent" 2>/dev/null)" ]
 }
 
+is_within_mountpoint() {
+  local path="$1"
+  local mountinfo mount_point
+  mountinfo="/proc/self/mountinfo"
+  if [ -r "${mountinfo}" ]; then
+    while IFS= read -r mount_point; do
+      if [[ "${path}" == "${mount_point}" || "${path}" == "${mount_point}/"* ]]; then
+        return 0
+      fi
+    done < <(awk '{print $5}' "${mountinfo}")
+    return 1
+  fi
+  local current
+  current="$path"
+  while true; do
+    if [ -e "$current" ] && is_mountpoint "$current"; then
+      return 0
+    fi
+    if [ "$current" = "/" ]; then
+      break
+    fi
+    current="$(dirname "$current")"
+  done
+  return 1
+}
+
 ensure_home_is_not_mounted() {
   local path="$1"
   local current
@@ -59,6 +85,15 @@ ensure_home_is_not_mounted() {
 replace_symlink() {
   local target_path="$1"
   local link_path="$2"
+  local resolved_path
+
+  resolved_path="$link_path"
+  if [[ -e "${link_path}" || -L "${link_path}" ]]; then
+    resolved_path="$(readlink -f "${link_path}" 2>/dev/null || printf "%s" "${link_path}")"
+  fi
+  if is_within_mountpoint "$resolved_path"; then
+    return 0
+  fi
 
   if [[ -e "${link_path}" || -L "${link_path}" ]]; then
     local timestamp backup_path
