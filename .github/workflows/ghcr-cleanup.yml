@@ -1,0 +1,134 @@
+name: GHCR Cleanup
+
+"on":
+  # Weekly on Wednesday at 03:23 UTC
+  schedule:
+    - cron: "23 3 * * 3"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run in dry-run mode (recommended first)"
+        type: boolean
+        default: true
+      log_level:
+        description: "Action log level"
+        type: choice
+        options:
+          - info
+          - debug
+          - warn
+          - error
+        default: info
+
+env:
+  # Repo-specific high-level knobs
+  PACKAGE_NAME: aicage-image-base
+  RETENTION_DAYS: "30"
+  RELEASE_TAG_KEEP_COUNT: "3"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  prepare-retention-regex:
+    name: Prepare retention regex
+    runs-on: ubuntu-latest
+    outputs:
+      package_name: ${{ steps.config.outputs.package_name }}
+      retention_days: ${{ steps.config.outputs.retention_days }}
+      keep_tags_regex: ${{ steps.regex.outputs.keep_tags_regex }}
+      release_list: ${{ steps.regex.outputs.release_list }}
+      base_list: ${{ steps.regex.outputs.base_list }}
+    steps:
+      - name: Export config
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "package_name=${PACKAGE_NAME}"
+            echo "retention_days=${RETENTION_DAYS}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Build base/release keep-regex
+        id: regex
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          N="${RELEASE_TAG_KEEP_COUNT}"
+          if ! [[ "${N}" =~ ^[0-9]+$ ]] || (( N < 1 )); then
+            echo "RELEASE_TAG_KEEP_COUNT must be an integer >= 1, got: ${N}" >&2
+            exit 1
+          fi
+
+          mapfile -t BASES < <(find bases -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+          if (( ${#BASES[@]} == 0 )); then
+            echo "No base folders found under ./bases" >&2
+            exit 1
+          fi
+
+          RELEASES_JSON="$(
+            curl \
+              -fsSL \
+              --retry 8 \
+              --retry-all-errors \
+              --retry-delay 2 \
+              --max-time 300 \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=100"
+          )"
+
+          mapfile -t RELEASES < <(
+            printf '%s' "${RELEASES_JSON}" \
+              | jq -r '.[] | select(.draft | not) | .tag_name' \
+              | sort -V -r \
+              | head -n "${N}"
+          )
+
+          if (( ${#RELEASES[@]} == 0 )); then
+            echo "No GitHub releases found. RELEASE_LIST must be non-empty." >&2
+            exit 1
+          fi
+
+          ESCAPED_BASES=()
+          for base in "${BASES[@]}"; do
+            escaped_base="$(printf '%s' "${base}" | sed -E 's/[][(){}.^$*+?|\\-]/\\\\&/g')"
+            ESCAPED_BASES+=("${escaped_base}")
+          done
+
+          ESCAPED_RELEASES=()
+          for rel in "${RELEASES[@]}"; do
+            escaped_rel="$(printf '%s' "${rel}" | sed -E 's/[][(){}.^$*+?|\\-]/\\\\&/g')"
+            ESCAPED_RELEASES+=("${escaped_rel}")
+          done
+
+          BASE_LIST="$(IFS='|'; echo "${ESCAPED_BASES[*]}")"
+          RELEASE_LIST="$(IFS='|'; echo "${ESCAPED_RELEASES[*]}")"
+          KEEP_TAGS_REGEX="^(${BASE_LIST})(-(${RELEASE_LIST}))?(-amd64|-arm64)?$"
+
+          {
+            echo "base_list=${BASE_LIST}"
+            echo "release_list=${RELEASE_LIST}"
+            echo "keep_tags_regex=${KEEP_TAGS_REGEX}"
+          } | tee /dev/stderr >> "${GITHUB_OUTPUT}"
+
+  ghcr-cleanup:
+    name: GHCR cleanup
+    needs: prepare-retention-regex
+    uses: aicage/github-actions/.github/workflows/ghcr-cleanup.yml@main
+    with:
+      owner: ${{ github.repository_owner }}
+      repository: ${{ github.event.repository.name }}
+      package: ${{ needs.prepare-retention-regex.outputs.package_name }}
+      older_than_days: ${{ fromJSON(needs.prepare-retention-regex.outputs.retention_days) }}
+      keep_tags_regex: ${{ needs.prepare-retention-regex.outputs.keep_tags_regex }}
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+      log_level: ${{ github.event_name == 'workflow_dispatch' && inputs.log_level || 'info' }}
+    secrets: inherit
