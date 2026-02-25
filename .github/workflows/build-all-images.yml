@@ -2,8 +2,9 @@ name: Build All Base Images (Latest Release Ref)
 run-name: Dispatch build-all-images-worker.yml at latest release tag
 
 "on":
+  # Weekly on Tuesday at 02:08 UTC
   schedule:
-    - cron: "0 2 * * 2"
+    - cron: "8 2 * * 2"
   workflow_dispatch: {}
 
 permissions:
