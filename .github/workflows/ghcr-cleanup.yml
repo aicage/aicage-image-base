@@ -6,6 +6,14 @@ name: GHCR Cleanup
     - cron: "23 3 * * 3"
   workflow_dispatch:
     inputs:
+      RETENTION_DAYS:
+        description: "Retention window in days for cleanup"
+        type: number
+        default: 30
+      RELEASE_TAG_KEEP_COUNT:
+        description: "How many latest release tags to keep"
+        type: number
+        default: 3
       dry_run:
         description: "Run in dry-run mode (recommended first)"
         type: boolean
@@ -23,8 +31,8 @@ name: GHCR Cleanup
 env:
   # Repo-specific high-level knobs
   PACKAGE_NAME: aicage-image-base
-  RETENTION_DAYS: "30"
-  RELEASE_TAG_KEEP_COUNT: "3"
+  RETENTION_DAYS: ${{ github.event_name == 'workflow_dispatch' && inputs.RETENTION_DAYS || 30 }}
+  RELEASE_TAG_KEEP_COUNT: ${{ github.event_name == 'workflow_dispatch' && inputs.RELEASE_TAG_KEEP_COUNT || 3 }}
 
 permissions:
   contents: read
