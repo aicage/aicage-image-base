@@ -84,3 +84,29 @@
   [ "${user}" = "root" ]
   [ "${home}" = "/root" ]
 }
+
+@test "existing home directory is reused for target user" {
+  run docker run --rm \
+    --env AICAGE_WORKSPACE=/workspace \
+    --entrypoint /bin/bash \
+    --env AICAGE_HOST_IS_LINUX=true \
+    --env AICAGE_UID=2234 \
+    --env AICAGE_GID=3234 \
+    --env AICAGE_HOST_USER=demo \
+    --env AICAGE_HOME=/home/demo \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      mkdir -p /home/demo
+      chown 0:0 /home/demo
+      /usr/local/bin/entrypoint.sh -c "set -euo pipefail; echo \"\$(id -u):\$(id -g):\${HOME}:\$(stat -c %u:%g /home/demo)\""
+    '
+  [ "$status" -eq 0 ]
+  result="$(printf '%s\n' "${output}" | tail -n 1)"
+  IFS=':' read -r uid gid home home_uid home_gid <<<"${result}"
+  [ "${uid}" -eq 2234 ]
+  [ "${gid}" -eq 3234 ]
+  [ "${home}" = "/home/demo" ]
+  [ "${home_uid}" -eq 2234 ]
+  [ "${home_gid}" -eq 3234 ]
+}
