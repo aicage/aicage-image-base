@@ -170,7 +170,7 @@ jobs:
   multiarch:
     name: Run multi-arch sign/provenance/publish
     needs: build
-    uses: aicage/github-actions/.github/workflows/multiarch-image-build-sign-provenance.yml@0.2.0
+    uses: aicage/github-actions/.github/workflows/multiarch-image-build-sign-provenance.yml@0.2.1
     with:
       image_ref: ${{ inputs.image }}
       version_tag: ${{ inputs.base }}-${{ inputs.aicage_version }}
