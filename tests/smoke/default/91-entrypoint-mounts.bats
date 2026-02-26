@@ -57,12 +57,41 @@ cleanup_mount_dir() {
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
-      [[ ! -e /root/.aicage-test-file ]]
+      [[ -L /root/.aicage-test-file ]]
+      [[ $(readlink -f /root/.aicage-test-file) == "/mnt/d/Users/hoster/.aicage-test-file" ]]
       [[ ! -L "${AICAGE_HOME}/.aicage-test-file" ]]
-      cat "${AICAGE_HOME}/.aicage-test-file"
+      cat /root/.aicage-test-file
     '
   [ "$status" -eq 0 ]
   [[ "$output" == *"file-data"* ]]
+}
+
+@test "home file mount on non-linux host replaces existing /root file" {
+  host_dir="$(mktemp -d)"
+  trap 'cleanup_mount_dir "${host_dir}"' RETURN
+  chmod 755 "${host_dir}"
+  printf 'host-data\n' >"${host_dir}/.aicage-test-file"
+  chmod 644 "${host_dir}/.aicage-test-file"
+
+  run docker run --rm \
+    --entrypoint /bin/bash \
+    --env AICAGE_WORKSPACE=/workspace \
+    -v "${host_dir}/.aicage-test-file:/mnt/d/Users/hoster/.aicage-test-file:ro" \
+    --env AICAGE_HOST_USER=hoster \
+    --env AICAGE_HOME=/mnt/d/Users/hoster \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      printf "image-data\n" >/root/.aicage-test-file
+      /usr/local/bin/entrypoint.sh -c "
+        set -euo pipefail
+        [[ -L /root/.aicage-test-file ]]
+        [[ \$(readlink -f /root/.aicage-test-file) == /mnt/d/Users/hoster/.aicage-test-file ]]
+        [[ \$(cat /root/.aicage-test-file) == host-data ]]
+        ls /root/.aicage-test-file.* >/dev/null
+      "
+    '
+  [ "$status" -eq 0 ]
 }
 
 @test "home dir mounts are directly available in AICAGE_HOME" {
@@ -116,12 +145,14 @@ cleanup_mount_dir() {
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
-      [[ ! -e /root/.aicage-test-dir-a ]]
-      [[ ! -e /root/.aicage-test-dir-b ]]
+      [[ -L /root/.aicage-test-dir-a ]]
+      [[ -L /root/.aicage-test-dir-b ]]
+      [[ $(readlink -f /root/.aicage-test-dir-a) == "/mnt/d/Users/hoster/.aicage-test-dir-a" ]]
+      [[ $(readlink -f /root/.aicage-test-dir-b) == "/mnt/d/Users/hoster/.aicage-test-dir-b" ]]
       [[ ! -L "${AICAGE_HOME}/.aicage-test-dir-a" ]]
       [[ ! -L "${AICAGE_HOME}/.aicage-test-dir-b" ]]
-      cat "${AICAGE_HOME}/.aicage-test-dir-a/config"
-      cat "${AICAGE_HOME}/.aicage-test-dir-b/known_hosts"
+      cat /root/.aicage-test-dir-a/config
+      cat /root/.aicage-test-dir-b/known_hosts
     '
   [ "$status" -eq 0 ]
   [[ "$output" == *"dir-a"* ]]

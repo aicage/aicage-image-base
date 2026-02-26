@@ -179,6 +179,49 @@ ensure_home_mount_parents_owned() {
   done
 }
 
+mirror_windows_home_mounts_to_root() {
+  local mount_point rel_path root_link timestamp backup_path
+  local -a mount_points mount_points_filtered
+
+  if [[ -n "${AICAGE_HOST_IS_LINUX:-}" ]]; then
+    return 0
+  fi
+  if [[ "${TARGET_USER}" != "root" ]]; then
+    return 0
+  fi
+  if [[ "${AICAGE_HOME}" == "/root" ]]; then
+    return 0
+  fi
+
+  mapfile -t mount_points < <(list_home_mount_points)
+  mapfile -t mount_points_filtered < <(filter_nested_mount_points "${mount_points[@]}")
+
+  for mount_point in "${mount_points_filtered[@]}"; do
+    mount_point="${mount_point%/}"
+    if [[ "${mount_point}" == "${AICAGE_HOME}" ]]; then
+      continue
+    fi
+    rel_path="${mount_point#${AICAGE_HOME}/}"
+    if [[ "${rel_path}" == "${mount_point}" ]]; then
+      continue
+    fi
+
+    root_link="/root/${rel_path}"
+    mkdir -p "$(dirname "${root_link}")"
+
+    if [[ -e "${root_link}" || -L "${root_link}" ]]; then
+      if [[ -e "${root_link}" ]] && is_mountpoint "${root_link}"; then
+        continue
+      fi
+      timestamp="$(date +%Y%m%d%H%M%S%N)"
+      backup_path="${root_link}.${timestamp}"
+      mv "${root_link}" "${backup_path}"
+    fi
+
+    ln -sfn "${mount_point}" "${root_link}"
+  done
+}
+
 setup_user_and_group() {
   local existing_user_name existing_user_uid existing_group_name
 
@@ -255,6 +298,7 @@ else
 fi
 
 ensure_home_is_not_mounted "${AICAGE_HOME}"
+mirror_windows_home_mounts_to_root
 set_target_env "${TARGET_HOME}" "${TARGET_USER}"
 
 if [[ ! -e "${AICAGE_WORKSPACE}" ]]; then
