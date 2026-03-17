@@ -1,0 +1,16 @@
+name: Change Validation
+run-name: Change validation (${{ github.ref_name }})
+
+"on":
+  pull_request: {}
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    uses: ./.github/workflows/lint.yml
