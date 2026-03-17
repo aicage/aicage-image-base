@@ -1,8 +1,8 @@
 # Development dependencies for running tests and linters.
 -r requirements.txt
-pymarkdownlnt
-pytest
-pytest-cov
-check-jsonschema
-ruff
-yamllint
+pymarkdownlnt>=0.9.35,<1
+pytest>=9.0.2,<10
+pytest-cov>=7.0.0,<8
+check-jsonschema>=0.36.2,<1
+ruff>=0.15.2,<1
+yamllint>=1.38.0,<2
