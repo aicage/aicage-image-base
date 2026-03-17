@@ -60,7 +60,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Checkout
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
         with:
           fetch-depth: 0
 
@@ -130,7 +130,7 @@ jobs:
   ghcr-cleanup:
     name: GHCR cleanup
     needs: prepare-retention-regex
-    uses: aicage/github-actions/.github/workflows/ghcr-cleanup.yml@0.2.1
+    uses: aicage/github-actions/.github/workflows/ghcr-cleanup.yml@c1ecf72221edf0760415b4a0ac8a0d26f8c0f992  # 0.2.7
     with:
       owner: ${{ github.repository_owner }}
       repository: ${{ github.event.repository.name }}
