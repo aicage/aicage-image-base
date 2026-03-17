@@ -32,7 +32,10 @@ curl_wrapper() {
 }
 
 jdk_version="$(
-  curl_wrapper https://api.adoptium.net/v3/info/available_releases \
+  curl_wrapper \
+    -H "Accept: application/json" \
+    -H "User-Agent: aicage-installer" \
+    https://api.adoptium.net/v3/info/available_releases \
     | jq -r '.most_recent_feature_release'
 )"
 
@@ -43,6 +46,8 @@ fi
 
 jdk_json="$(
   curl_wrapper \
+    -H "Accept: application/json" \
+    -H "User-Agent: aicage-installer" \
     "https://api.adoptium.net/v3/assets/feature_releases/${jdk_version}/ga?architecture=${JDK_ARCH}&heap_size=normal&image_type=jdk&jvm_impl=hotspot&os=${jdk_os}&vendor=eclipse"
 )"
 
