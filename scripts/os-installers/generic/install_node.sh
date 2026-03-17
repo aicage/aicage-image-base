@@ -29,6 +29,7 @@ esac
 
 # add retry and other params to reduce failure in pipelines
 curl_wrapper() {
+  echo "curl: $1" >&2
   curl -fsSL \
     --retry 8 \
     --retry-all-errors \
