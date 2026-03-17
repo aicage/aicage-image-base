@@ -10,7 +10,7 @@ export CARGO_HOME=/usr/local/cargo
 
 # add retry and other params to reduce failure in pipelines
 curl_wrapper() {
-  echo "curl: $1" >&2
+  echo "curl: ${!#}" >&2
   curl -fsSL \
     --retry 8 \
     --retry-all-errors \
