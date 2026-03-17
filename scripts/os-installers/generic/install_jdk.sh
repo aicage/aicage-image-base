@@ -31,7 +31,7 @@ curl_wrapper() {
 }
 
 jdk_version="$(
-  curl_wrapper https://api.adoptium.net/v3/info/available_releases \
+  curl_wrapper "https://api.adoptium.net/v3/info/available_releases?cb=$(date +%s)" \
     | jq -r '.most_recent_feature_release'
 )"
 
@@ -42,7 +42,7 @@ fi
 
 jdk_json="$(
   curl_wrapper \
-    "https://api.adoptium.net/v3/assets/feature_releases/${jdk_version}/ga?architecture=${JDK_ARCH}&heap_size=normal&image_type=jdk&jvm_impl=hotspot&os=${jdk_os}&vendor=eclipse"
+    "https://api.adoptium.net/v3/assets/feature_releases/${jdk_version}/ga?architecture=${JDK_ARCH}&heap_size=normal&image_type=jdk&jvm_impl=hotspot&os=${jdk_os}&vendor=eclipse&cb=$(date +%s)"
 )"
 
 jdk_url="$(echo "${jdk_json}" | jq -r '.[0].binaries[0].package.link')"
