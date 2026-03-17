@@ -31,8 +31,37 @@ curl_wrapper() {
     "$@"
 }
 
+curl_json_wrapper() {
+  local _url="${!#}"
+  local _body_file _header_file _curl_exit
+  _body_file="$(mktemp)"
+  _header_file="$(mktemp)"
+  echo "curl: ${_url}" >&2
+  if curl -fsSL \
+    --retry 8 \
+    --retry-all-errors \
+    --retry-delay 2 \
+    --max-time 600 \
+    -D "${_header_file}" \
+    -o "${_body_file}" \
+    "$@"; then
+    cat "${_body_file}"
+    rm -f "${_body_file}" "${_header_file}"
+    return 0
+  fi
+
+  _curl_exit=$?
+  echo "curl failed for: ${_url}" >&2
+  echo "response headers:" >&2
+  sed -n '1,40p' "${_header_file}" >&2 || true
+  echo "response body:" >&2
+  sed -n '1,80p' "${_body_file}" >&2 || true
+  rm -f "${_body_file}" "${_header_file}"
+  return "${_curl_exit}"
+}
+
 jdk_version="$(
-  curl_wrapper \
+  curl_json_wrapper \
     -H "Accept: application/json" \
     -H "User-Agent: aicage-installer" \
     https://api.adoptium.net/v3/info/available_releases \
@@ -45,7 +74,7 @@ if [[ -z "${jdk_version}" || "${jdk_version}" == "null" ]]; then
 fi
 
 jdk_json="$(
-  curl_wrapper \
+  curl_json_wrapper \
     -H "Accept: application/json" \
     -H "User-Agent: aicage-installer" \
     "https://api.adoptium.net/v3/assets/feature_releases/${jdk_version}/ga?architecture=${JDK_ARCH}&heap_size=normal&image_type=jdk&jvm_impl=hotspot&os=${jdk_os}&vendor=eclipse"
