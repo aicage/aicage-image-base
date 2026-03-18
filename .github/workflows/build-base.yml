@@ -172,7 +172,7 @@ jobs:
     needs: build
     uses: aicage/github-actions/.github/workflows/multiarch-image-build-sign-provenance.yml@7afafec3f406803d09ea593b7806697f2a022808
     with:
-      actions_ref: 0.2.8
+      actions_ref: 7afafec3f406803d09ea593b7806697f2a022808  # 0.2.8
       image_ref: ${{ inputs.image }}
       version_tag: ${{ inputs.base }}-${{ inputs.aicage_version }}
       purpose_tag: ${{ inputs.base }}
