@@ -170,12 +170,22 @@ jobs:
   multiarch:
     name: Run multi-arch sign/provenance/publish
     needs: build
-    uses: aicage/github-actions/.github/workflows/multiarch-image-build-sign-provenance.yml@7afafec3f406803d09ea593b7806697f2a022808
-    with:
-      actions_ref: 7afafec3f406803d09ea593b7806697f2a022808  # 0.2.8
-      image_ref: ${{ inputs.image }}
-      version_tag: ${{ inputs.base }}-${{ inputs.aicage_version }}
-      purpose_tag: ${{ inputs.base }}
-      index_digest_amd64: ${{ needs.build.outputs.INDEX_DIGEST_amd64 }}
-      index_digest_arm64: ${{ needs.build.outputs.INDEX_DIGEST_arm64 }}
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to the container registry
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2  # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Use multi-arch publish action
+        uses: gh-workflow/multiarch-image-build-sign-provenance@66d27df6e800ce58642ce65b15798c03d1f673b0  # 0.0.2
+        with:
+          image_ref: ${{ inputs.image }}
+          tags: |
+            ${{ inputs.base }}-${{ inputs.aicage_version }}
+            ${{ inputs.base }}
+          platform_digests: |
+            linux/amd64=${{ needs.build.outputs.INDEX_DIGEST_amd64 }}
+            linux/arm64=${{ needs.build.outputs.INDEX_DIGEST_arm64 }}
