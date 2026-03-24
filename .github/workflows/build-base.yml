@@ -180,7 +180,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Use multi-arch publish action
-        uses: gh-workflow/multiarch-image-publish@8ac823091aada6949ef28c3b47aad2b16567a735  # 0.0.9
+        uses: gh-workflow/multiarch-image-publish@282b03514f4a3a6ece0d53e1be072abe9653f41b  # 0.0.10
         with:
           image_ref: ${{ inputs.image }}
           tags: |
