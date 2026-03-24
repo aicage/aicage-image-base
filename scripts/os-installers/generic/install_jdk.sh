@@ -32,7 +32,7 @@ curl_wrapper() {
 
 jdk_version="$(
   curl_wrapper "https://api.adoptium.net/v3/info/available_releases?cb=$(date +%s)" \
-    | jq -r '.most_recent_feature_release'
+    | jq -r '.available_lts_releases | max'
 )"
 
 if [[ -z "${jdk_version}" || "${jdk_version}" == "null" ]]; then
