@@ -11,6 +11,7 @@ apk add --no-cache \
   file \
   git \
   gnupg \
+  imagemagick \
   iproute2 \
   jq \
   less \

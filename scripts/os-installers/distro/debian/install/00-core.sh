@@ -11,6 +11,7 @@ apt-get install -y --no-install-recommends \
   file \
   git \
   gnupg \
+  imagemagick \
   iproute2 \
   jq \
   less \

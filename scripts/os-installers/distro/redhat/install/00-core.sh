@@ -12,6 +12,7 @@ dnf -y install \
   file \
   git \
   gnupg2 \
+  ImageMagick \
   iproute \
   jq \
   less \
