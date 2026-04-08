@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export GNUPGHOME="$(mktemp -d)"
+GNUPGHOME="$(mktemp -d)"
+export GNUPGHOME
 
 # keyring
 install -m 0755 -d /etc/apt/keyrings
@@ -21,6 +22,7 @@ curl_wrapper https://download.docker.com/linux/debian/gpg \
 chmod a+r /etc/apt/keyrings/docker.gpg
 
 # repo
+# shellcheck disable=SC1091
 . /etc/os-release
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
 https://download.docker.com/linux/${ID} ${VERSION_CODENAME} stable" \

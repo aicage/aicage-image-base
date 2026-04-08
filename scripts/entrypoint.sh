@@ -96,6 +96,7 @@ list_home_mount_points() {
   [ -r "${mountinfo}" ] || return 0
 
   while IFS= read -r line; do
+    # shellcheck disable=SC2086
     set -- ${line}
     mount_point="$5"
     if [[ "${mount_point}" == "${AICAGE_HOME}" || "${mount_point}" == "${AICAGE_HOME}/"* ]]; then
@@ -201,7 +202,7 @@ mirror_windows_home_mounts_to_root() {
     if [[ "${mount_point}" == "${AICAGE_HOME}" ]]; then
       continue
     fi
-    rel_path="${mount_point#${AICAGE_HOME}/}"
+    rel_path="${mount_point#"${AICAGE_HOME}"/}"
     if [[ "${rel_path}" == "${mount_point}" ]]; then
       continue
     fi

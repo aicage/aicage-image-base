@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+TRACE_TOOLS=(strace)
 if apt-cache show ltrace >/dev/null 2>&1; then
-  TRACE_TOOLS="strace ltrace"
-else
-  TRACE_TOOLS=strace
+  TRACE_TOOLS+=(ltrace)
 fi
 
 apt-get install -y --no-install-recommends \
@@ -15,7 +14,7 @@ apt-get install -y --no-install-recommends \
   libssl-dev \
   lld \
   lldb \
-  ${TRACE_TOOLS} \
+  "${TRACE_TOOLS[@]}" \
   ninja-build \
   pkg-config \
   valgrind \
