@@ -154,6 +154,25 @@ jobs:
           set -euo pipefail
           docker pull "${IMAGE_NAME}@${{ steps.build_image.outputs.digest }}"
 
+      - name: "Test: Verify OCI labels on base image"
+        run: |
+          set -euo pipefail
+          expected_description="Base image for aicage (${{ env.BASE_ALIAS }})"
+          expected_revision="${{ steps.oci.outputs.revision }}"
+          expected_created="${{ steps.oci.outputs.created }}"
+          expected_version="${{ steps.oci.outputs.version }}"
+          docker image inspect "${IMAGE_NAME}@${{ steps.build_image.outputs.digest }}" \
+            | jq -e \
+              --arg expected_description "$expected_description" \
+              --arg expected_revision "$expected_revision" \
+              --arg expected_created "$expected_created" \
+              --arg expected_version "$expected_version" '
+              .[0].Config.Labels["org.opencontainers.image.description"] == $expected_description
+              and .[0].Config.Labels["org.opencontainers.image.revision"] == $expected_revision
+              and .[0].Config.Labels["org.opencontainers.image.created"] == $expected_created
+              and .[0].Config.Labels["org.opencontainers.image.version"] == $expected_version
+            ' >/dev/null
+
       - name: "Test: Setup BATS testing framework"
         uses: mig4/setup-bats@af9a00deb21b5d795cabfeaa8d9060410377686d  # v1.2.0
 
@@ -195,6 +214,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Use multi-arch publish action
+        id: publish
         uses: gh-workflow/multiarch-image-publish@0.1.6
         with:
           image_ref: ${{ inputs.image }}
@@ -212,3 +232,27 @@ jobs:
             org.opencontainers.image.revision=${{ needs.build.outputs.REVISION }}
             org.opencontainers.image.created=${{ needs.build.outputs.CREATED }}
             org.opencontainers.image.version=${{ inputs.aicage_version }}
+
+      - name: Verify OCI annotations on published manifest
+        run: |
+          set -euo pipefail
+          expected_description="Base image for aicage (${{ inputs.base }})"
+          expected_revision="${{ needs.build.outputs.REVISION }}"
+          expected_created="${{ needs.build.outputs.CREATED }}"
+          expected_version="${{ inputs.aicage_version }}"
+          docker buildx imagetools inspect \
+            --raw "${{ inputs.image }}@${{ steps.publish.outputs.manifest_digest }}" \
+            | jq -e \
+              --arg expected_description "$expected_description" \
+              --arg expected_revision "$expected_revision" \
+              --arg expected_created "$expected_created" \
+              --arg expected_version "$expected_version" '
+              .annotations["org.opencontainers.image.title"] == "aicage-image-base"
+              and .annotations["org.opencontainers.image.description"] == $expected_description
+              and .annotations["org.opencontainers.image.source"]
+                == "https://github.com/aicage/aicage-image-base"
+              and .annotations["org.opencontainers.image.licenses"] == "Apache-2.0"
+              and .annotations["org.opencontainers.image.revision"] == $expected_revision
+              and .annotations["org.opencontainers.image.created"] == $expected_created
+              and .annotations["org.opencontainers.image.version"] == $expected_version
+            ' >/dev/null
