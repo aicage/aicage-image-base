@@ -23,7 +23,7 @@ pip install -r requirements-dev.txt
 - `bases/<alias>/base.yml` — Defines the upstream image and installer for each base.
 - `Dockerfile` — Docker build entrypoint.
 - `scripts/` — Build/test helpers.
-- `tests/smoke/` — Bats suites for base images.
+- `tests/bases/smoke/` — Bats suites for base images.
 - `config.yml` — Default repository, version, and platform settings.
 
 ## Configuration
@@ -52,14 +52,14 @@ scripts/debug/build-all.sh
 scripts/test-all.sh
 ```
 
-Smoke suites live in `tests/smoke/` (including subfolders); run individual files with
-`bats tests/smoke/<path>.bats`.
+Smoke suites live in `tests/bases/smoke/` (including subfolders); run individual files with
+`bats tests/bases/smoke/<path>.bats`.
 
 ## Adding a base
 
 1. Create `bases/<alias>/base.yml` with `from_image` and `os_installer`.
 2. Add or adjust installer scripts if the base needs extra setup.
-3. Update smoke coverage under `tests/smoke/` if the new base requires validation.
+3. Update smoke coverage under `tests/bases/smoke/` if the new base requires validation.
 4. Document the new base in `README.md` if it should be visible to users.
 
 ## CI
