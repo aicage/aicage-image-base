@@ -78,6 +78,16 @@ jobs:
         with:
           ref: ${{ inputs.git_ref || github.ref }}
 
+      - name: Resolve OCI labels
+        id: oci
+        run: |
+          set -euo pipefail
+          {
+            echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "revision=$(git rev-parse HEAD)"
+            echo "version=${AICAGE_VERSION}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Set up Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
         with:
@@ -133,6 +143,9 @@ jobs:
             ${{ env.IMAGE_TEST_TAG }}
           labels: |
             org.opencontainers.image.description=Base image for aicage (${{ env.BASE_ALIAS }})
+            org.opencontainers.image.revision=${{ steps.oci.outputs.revision }}
+            org.opencontainers.image.created=${{ steps.oci.outputs.created }}
+            org.opencontainers.image.version=${{ steps.oci.outputs.version }}
 
       - name: "Test: Pull base image for local tests"
         run: |
