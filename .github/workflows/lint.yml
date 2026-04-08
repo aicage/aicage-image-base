@@ -21,6 +21,11 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: "Test: Install shellcheck"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
       - name: "Test: Remove Python yq and keep using Go yq"
         run: |
           python -m pip uninstall -y yq
@@ -30,20 +35,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      - name: "Test: Run linters (yamllint, ruff, pymarkdown)"
+      - name: "Test: Run scripts/lint.sh"
         run: |
-          yamllint .
-          ruff check .
-          pymarkdown --config .pymarkdown.json scan --recurse --exclude '.venv/**' .
-
-      - name: "Test: Validate config and bases with schemas"
-        run: |
-          check-jsonschema \
-            --schemafile doc/validation/config.schema.json \
-            config.yml
-          check-jsonschema \
-            --schemafile doc/validation/base.schema.json \
-            bases/*/base.yml
-          check-jsonschema \
-            --schemafile doc/validation/base-build.schema.json \
-            bases/*/base-build.yml
+          chmod +x scripts/*.sh
+          scripts/lint.sh
