@@ -29,13 +29,13 @@ fi
 
 # Schemas
 check-jsonschema \
-  --schemafile doc/validation/config.schema.json \
+  --schemafile validation/config.schema.json \
   config.yml
 
 check-jsonschema \
-  --schemafile doc/validation/base.schema.json \
+  --schemafile validation/base.schema.json \
   bases/*/base.yml
 
 check-jsonschema \
-  --schemafile doc/validation/base-build.schema.json \
+  --schemafile validation/base-build.schema.json \
   bases/*/base-build.yml
