@@ -69,8 +69,10 @@ jobs:
       ROOT_DIR: ${{ github.workspace }}
       AICAGE_VERSION: ${{ inputs.aicage_version }}
     outputs:
+      CREATED: ${{ steps.oci.outputs.created }}
       INDEX_DIGEST_amd64: ${{ steps.out-amd64.outputs.INDEX_DIGEST }}
       INDEX_DIGEST_arm64: ${{ steps.out-arm64.outputs.INDEX_DIGEST }}
+      REVISION: ${{ steps.oci.outputs.revision }}
 
     steps:
       - name: Checkout
@@ -193,7 +195,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Use multi-arch publish action
-        uses: gh-workflow/multiarch-image-publish@d2b5b4cce8cac7f8927c0b03911f123939f0d6b5  # 0.1.5
+        uses: gh-workflow/multiarch-image-publish@0.1.6
         with:
           image_ref: ${{ inputs.image }}
           tags: |
@@ -202,3 +204,11 @@ jobs:
           platform_digests: |
             linux/amd64=${{ needs.build.outputs.INDEX_DIGEST_amd64 }}
             linux/arm64=${{ needs.build.outputs.INDEX_DIGEST_arm64 }}
+          annotations: |
+            org.opencontainers.image.title=aicage-image-base
+            org.opencontainers.image.description=Base image for aicage (${{ inputs.base }})
+            org.opencontainers.image.source=https://github.com/aicage/aicage-image-base
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.revision=${{ needs.build.outputs.REVISION }}
+            org.opencontainers.image.created=${{ needs.build.outputs.CREATED }}
+            org.opencontainers.image.version=${{ inputs.aicage_version }}
