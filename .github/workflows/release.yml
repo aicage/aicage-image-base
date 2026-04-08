@@ -39,6 +39,8 @@ jobs:
             -C scripts \
               os-installers \
               entrypoint.sh
+          tar -czf dist/"${REPO_NAME}"-smoke-tests.tar.gz \
+            tests/bases/smoke
 
       - name: "Release: Create SHA256SUMS"
         run: |
