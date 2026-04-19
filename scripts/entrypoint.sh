@@ -90,6 +90,24 @@ set_target_env() {
   export PATH="${HOME}/.local/bin:${PATH}"
 }
 
+apply_timezone() {
+  local timezone="${TZ:-}"
+  local zoneinfo_path
+
+  if [[ -z "${timezone}" ]]; then
+    return 0
+  fi
+
+  zoneinfo_path="/usr/share/zoneinfo/${timezone}"
+  if [[ ! -e "${zoneinfo_path}" ]]; then
+    echo "Requested timezone not found: ${timezone}" >&2
+    exit 1
+  fi
+
+  ln -sfn "${zoneinfo_path}" /etc/localtime
+  printf '%s\n' "${timezone}" >/etc/timezone
+}
+
 list_home_mount_points() {
   local mountinfo line mount_point
   mountinfo="/proc/self/mountinfo"
@@ -300,6 +318,7 @@ fi
 
 ensure_home_is_not_mounted "${AICAGE_HOME}"
 mirror_windows_home_mounts_to_root
+apply_timezone
 set_target_env "${TARGET_HOME}" "${TARGET_USER}"
 
 if [[ ! -e "${AICAGE_WORKSPACE}" ]]; then

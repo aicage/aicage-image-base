@@ -26,6 +26,7 @@ apt-get install -y --no-install-recommends \
   time \
   tini \
   tree \
+  tzdata \
   unzip \
   xz-utils \
   yq \

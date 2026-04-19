@@ -29,6 +29,7 @@ dnf -y install \
   time \
   tini \
   tree \
+  tzdata \
   unzip \
   xz \
   yq \

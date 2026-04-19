@@ -28,6 +28,7 @@ apk add --no-cache \
   time \
   tini \
   tree \
+  tzdata \
   unzip \
   xz \
   yq \
