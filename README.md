@@ -14,6 +14,7 @@ images in [aicage/aicage-image](https://github.com/aicage/aicage-image) build on
 - `${AICAGE_BASE_REPOSITORY:-aicage/aicage-image-base}:<base>-<aicage_version>`
 
 Example:
+
 - `aicage/aicage-image-base:ubuntu`
 - `aicage/aicage-image-base:ubuntu-0.0.1`
 
