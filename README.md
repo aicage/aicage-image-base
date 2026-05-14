@@ -15,8 +15,8 @@ images in [aicage/aicage-image](https://github.com/aicage/aicage-image) build on
 
 Example:
 
-- `aicage/aicage-image-base:ubuntu`
-- `aicage/aicage-image-base:ubuntu-0.0.1`
+- aicage/aicage-image-base:ubuntu
+- aicage/aicage-image-base:ubuntu-0.0.1
 
 `<base>` tags are convenience aliases for the newest published version of a base.
 
