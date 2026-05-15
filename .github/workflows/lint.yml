@@ -16,6 +16,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
+      - name: Ensure workflow actions use immutable refs
+        uses: joshjohanning/ensure-immutable-actions@28e5544cb61fef95d00ee312614a29c8e3a68a19 # v2.5.4
+
       - name: "Test: Set up Python"
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
