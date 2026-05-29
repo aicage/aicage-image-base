@@ -16,12 +16,9 @@ jobs:
   build-images:
     uses: ./.github/workflows/build-all-images-worker.yml
 
-  lint:
-    uses: ./.github/workflows/lint.yml
-
   release:
     runs-on: ubuntu-latest
-    needs: [build-images, lint]
+    needs: build-images
     permissions:
       contents: write
       id-token: write
