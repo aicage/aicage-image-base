@@ -62,9 +62,8 @@ ln -sf /usr/local/bin/npx /usr/bin/npx
 
 npm config set prefix /usr/local
 
-if command -v corepack >/dev/null 2>&1; then
-  corepack enable
-fi
+npm install -g corepack
+corepack enable
 
 # xdg-utils: provides xdg-open; needed by some npm-installed CLI agents (auth/docs URL open)
 if ! command -v xdg-open >/dev/null 2>&1; then
