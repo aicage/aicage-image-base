@@ -162,7 +162,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Remove test tag on image
-        uses: ghcr-manager/ghcr-untag-action@0c32d681a3f68580cbcfebfcf126cbab8df872f8  # v1.0.4
+        uses: ghcr-manager/ghcr-untag-action@ab3e570fdd6d67415ed325bedf29f3ec0777add1  # v1.0.6
         with:
           token: ${{ github.token }}
           owner: ${{ steps.untag_vars.outputs.image_owner }}
