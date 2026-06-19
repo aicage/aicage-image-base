@@ -24,3 +24,22 @@ EOF
     '
   [ "$status" -eq 0 ]
 }
+
+@test "musl vendored libbpf prerequisites available" {
+  run docker run --rm \
+    --env AICAGE_WORKSPACE=/workspace \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+
+      command -v autoreconf
+      command -v autopoint
+      command -v flex
+      command -v bison
+      command -v gawk
+      command -v libtoolize
+      command -v make
+      command -v pkg-config
+    '
+  [ "$status" -eq 0 ]
+}
