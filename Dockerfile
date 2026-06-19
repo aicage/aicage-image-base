@@ -16,11 +16,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     AICAGE_UID=1000 \
     AICAGE_GID=1000 \
     NPM_CONFIG_PREFIX=/usr/local \
-    RUSTUP_HOME=/usr/local/rustup \
-    CARGO_HOME=/usr/local/cargo \
     PIPX_HOME=/opt/pipx \
     PIPX_BIN_DIR=/opt/pipx/bin \
-    PATH="/opt/pipx/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+    PATH="/opt/pipx/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
 
 RUN --mount=type=bind,source=scripts/os-installers,target=/tmp/aicage/scripts/os-installers,readonly \
     --mount=type=bind,source=scripts/entrypoint.sh,target=/tmp/aicage/scripts/entrypoint.sh,readonly \
