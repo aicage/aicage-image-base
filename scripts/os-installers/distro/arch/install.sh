@@ -10,4 +10,4 @@ for install_script in "${install_dir}"/*.sh; do
   "${install_script}"
 done
 
-pacman -Scc --noconfirm
+rm -rf /var/cache/pacman/pkg/* /var/lib/pacman/sync/*
