@@ -3,14 +3,19 @@
 @test "java toolchain present" {
   run docker run --rm \
     --env AICAGE_WORKSPACE=/workspace \
+    --env AICAGE_HOST_IS_LINUX=true \
+    --env AICAGE_UID=1234 \
+    --env AICAGE_GID=2345 \
+    --env AICAGE_HOST_USER=demo \
+    --env AICAGE_HOME=/home/demo \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
       command -v java
       command -v javac
-      command -v mvn
-      command -v ant
-      command -v protoc
+      mvn --version >/dev/null
+      ant -version >/dev/null
+      protoc --version >/dev/null
 
       mkdir -p /tmp/java-smoke/src
       cat >/tmp/java-smoke/src/Hello.java <<'"'"'EOF'"'"'
@@ -35,12 +40,14 @@ EOF
       cat >/tmp/java-smoke/hello.proto <<'"'"'EOF'"'"'
 syntax = "proto3";
 
-message Hello {
-  string message = 1;
-}
+      message Hello {
+        string message = 1;
+      }
 EOF
       mkdir -p /tmp/java-smoke/proto-out
-      protoc --java_out=/tmp/java-smoke/proto-out /tmp/java-smoke/hello.proto
+      protoc -I /tmp/java-smoke \
+        --java_out=/tmp/java-smoke/proto-out \
+        /tmp/java-smoke/hello.proto
       test -f /tmp/java-smoke/proto-out/HelloOuterClass.java
     '
   [ "$status" -eq 0 ]
