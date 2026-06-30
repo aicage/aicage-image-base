@@ -242,7 +242,7 @@ mirror_windows_home_mounts_to_root() {
 }
 
 setup_user_and_group() {
-  local existing_user_name existing_user_uid existing_group_name
+  local existing_user_name existing_user_uid existing_group_name primary_group_name
 
   existing_user_uid="$(getent passwd "${TARGET_USER}" | cut -d: -f3 || true)"
   if [[ -n "${existing_user_uid}" && "${existing_user_uid}" != "${AICAGE_UID}" ]]; then
@@ -255,18 +255,17 @@ setup_user_and_group() {
   fi
 
   existing_group_name="$(getent group "${AICAGE_GID}" | cut -d: -f1 || true)"
-  if [[ -n "${existing_group_name}" && "${existing_group_name}" != "${TARGET_USER}" && "${existing_group_name}" != "docker" ]]; then
-    groupdel "${existing_group_name}"
-  fi
-
-  if ! getent group "${AICAGE_GID}" >/dev/null; then
+  if [[ -n "${existing_group_name}" ]]; then
+    primary_group_name="${existing_group_name}"
+  else
     groupadd -g "${AICAGE_GID}" "${TARGET_USER}"
+    primary_group_name="${TARGET_USER}"
   fi
 
   if [[ -d "${AICAGE_HOME}" ]]; then
-    useradd --no-create-home -u "${AICAGE_UID}" -g "${AICAGE_GID}" -d "${AICAGE_HOME}" -s /bin/bash "${TARGET_USER}"
+    useradd --no-create-home -u "${AICAGE_UID}" -g "${primary_group_name}" -d "${AICAGE_HOME}" -s /bin/bash "${TARGET_USER}"
   else
-    useradd --create-home -u "${AICAGE_UID}" -g "${AICAGE_GID}" -d "${AICAGE_HOME}" -s /bin/bash "${TARGET_USER}"
+    useradd --create-home -u "${AICAGE_UID}" -g "${primary_group_name}" -d "${AICAGE_HOME}" -s /bin/bash "${TARGET_USER}"
   fi
   TARGET_HOME="${AICAGE_HOME}"
 
