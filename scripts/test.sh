@@ -8,7 +8,7 @@ BASE_ALIAS=""
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/test.sh --image <image-ref> [-- <bats-args>]
+Usage: scripts/test.sh --image <image-ref> --base <base> [-- <bats-args>]
 
 Options:
   -h, --help      Show this help and exit
