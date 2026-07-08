@@ -47,6 +47,18 @@ get_image_base_source_url() {
   _get_github_repository_url "${AICAGE_IMAGE_BASE_SOURCE_REPOSITORY}"
 }
 
+list_configured_bases() {
+  local base_alias
+  local configured_filter="${AICAGE_BUILD_BASE_FILTER:-.*}"
+
+  while IFS= read -r base_alias; do
+    [[ -n "${base_alias}" ]] || continue
+    if [[ "${base_alias}" =~ ${configured_filter} ]]; then
+      printf '%s\n' "${base_alias}"
+    fi
+  done < <(find "${BASE_DEFINITIONS_DIR}" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+}
+
 _read_yaml_field() {
   local alias="$1"
   local field="$2"

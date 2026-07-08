@@ -49,16 +49,32 @@ jobs:
       - name: "Release: Package release artifacts"
         run: |
           set -euo pipefail
+          ROOT_DIR="${GITHUB_WORKSPACE}"
+          export ROOT_DIR
           mkdir -p dist
+          source scripts/common.sh
+          load_config_file
+
+          artifact_dir="$(mktemp -d)"
+          mkdir -p "${artifact_dir}/bases" "${artifact_dir}/scripts"
+          # add filtered bases
+          while IFS= read -r base_alias; do
+            cp -a "bases/${base_alias}" "${artifact_dir}/bases/"
+          done < <(list_configured_bases)
+          # add tests
+          cp -a tests "${artifact_dir}/"
+          # add scripts
+          cp -a scripts/os-installers scripts/entrypoint.sh "${artifact_dir}/scripts/"
+
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
           tar -czf dist/"${REPO_NAME}".tar.gz \
-            bases \
-            tests \
-            -C scripts \
-              os-installers \
-              entrypoint.sh
+            -C "${artifact_dir}" \
+              bases \
+              tests \
+              scripts
           tar -czf dist/"${REPO_NAME}"-smoke-tests.tar.gz \
             tests/bases/smoke
+          rm -rf "${artifact_dir}"
 
       - name: "Release: Create SHA256SUMS"
         run: |
@@ -83,7 +99,6 @@ jobs:
       - name: "Release: Create GitHub release"
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b  # v3.0.1
         with:
-          name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true

@@ -6,6 +6,7 @@
     "AICAGE_IMAGE_REGISTRY",
     "AICAGE_IMAGE_BASE_REPOSITORY",
     "AICAGE_IMAGE_BASE_SOURCE_REPOSITORY",
+    "AICAGE_BUILD_BASE_FILTER",
     "AICAGE_VERSION"
   ],
   "properties": {
@@ -16,6 +17,9 @@
       "type": "string"
     },
     "AICAGE_IMAGE_BASE_SOURCE_REPOSITORY": {
+      "type": "string"
+    },
+    "AICAGE_BUILD_BASE_FILTER": {
       "type": "string"
     },
     "AICAGE_VERSION": {

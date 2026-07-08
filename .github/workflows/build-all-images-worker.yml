@@ -50,7 +50,7 @@ jobs:
             fi
             bases=("${INPUT_BASE}")
           else
-            mapfile -t bases < <(ls -1 bases)
+            mapfile -t bases < <(list_configured_bases)
           fi
 
           bases_file="$(mktemp)"

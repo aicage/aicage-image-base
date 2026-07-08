@@ -33,6 +33,7 @@ Setting from `config.yml`:
 - `AICAGE_IMAGE_REGISTRY` (default `ghcr.io`)
 - `AICAGE_IMAGE_BASE_REPOSITORY` (default `aicage/aicage-image-base`)
 - `AICAGE_IMAGE_BASE_SOURCE_REPOSITORY` (default `aicage/aicage-image-base`)
+- `AICAGE_BUILD_BASE_FILTER` (default `".*"`; use a regex such as `"ubuntu|alpine"`)
 - `AICAGE_VERSION` (default `dev`)
 Base aliases come from folders under `bases/`.
 
@@ -47,6 +48,7 @@ To test releases from a fork:
    ```yaml
    AICAGE_IMAGE_BASE_REPOSITORY: aicage-dev/aicage-image-base
    AICAGE_IMAGE_BASE_SOURCE_REPOSITORY: aicage-dev/aicage-image-base
+   AICAGE_BUILD_BASE_FILTER: "ubuntu|alpine"
    ```
 
 4. Push a Git tag to trigger the publish workflow. Prefer prerelease-style tags such as

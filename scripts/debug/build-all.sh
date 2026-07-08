@@ -47,9 +47,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-for base_dir in "${ROOT_DIR}/bases"/*; do
-  BASE_ALIAS="$(basename "${base_dir}")"
+while IFS= read -r BASE_ALIAS; do
+  [[ -n "${BASE_ALIAS}" ]] || continue
   FROM_IMAGE="$(get_base_field "${BASE_ALIAS}" from_image)"
   echo "[build-base-all] Building ${BASE_ALIAS} (upstream: ${FROM_IMAGE}" >&2
   "${ROOT_DIR}/scripts/util/build.sh" --base "${BASE_ALIAS}" --version "${AICAGE_VERSION}"
-done
+done < <(list_configured_bases)
