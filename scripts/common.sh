@@ -34,6 +34,19 @@ load_config_file() {
   done < <(yq -er 'to_entries[] | [.key, (.value // "")] | @tsv' "${config_file}")
 }
 
+_get_github_repository_url() {
+  local repository="$1"
+  printf 'https://github.com/%s\n' "${repository}"
+}
+
+get_image_base_ref() {
+  printf '%s/%s\n' "${AICAGE_IMAGE_REGISTRY}" "${AICAGE_IMAGE_BASE_REPOSITORY}"
+}
+
+get_image_base_source_url() {
+  _get_github_repository_url "${AICAGE_IMAGE_BASE_SOURCE_REPOSITORY}"
+}
+
 _read_yaml_field() {
   local alias="$1"
   local field="$2"

@@ -1,5 +1,6 @@
 # check=skip=InvalidDefaultArgInFrom
 ARG FROM_IMAGE
+ARG IMAGE_SOURCE_URL
 
 FROM ${FROM_IMAGE} AS from_image
 
@@ -7,7 +8,7 @@ ARG OS_INSTALLER
 
 LABEL org.opencontainers.image.title="aicage-image-base" \
       org.opencontainers.image.description="Prebuilt base layer for agent images" \
-      org.opencontainers.image.source="https://github.com/aicage/aicage-image-base" \
+      org.opencontainers.image.source="${IMAGE_SOURCE_URL}" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 ENV DEBIAN_FRONTEND=noninteractive \

@@ -32,8 +32,30 @@ Setting from `config.yml`:
 
 - `AICAGE_IMAGE_REGISTRY` (default `ghcr.io`)
 - `AICAGE_IMAGE_BASE_REPOSITORY` (default `aicage/aicage-image-base`)
+- `AICAGE_IMAGE_BASE_SOURCE_REPOSITORY` (default `aicage/aicage-image-base`)
 - `AICAGE_VERSION` (default `dev`)
 Base aliases come from folders under `bases/`.
+
+## Fork Setup
+
+To test releases from a fork:
+
+1. Fork the repository.
+2. Enable GitHub Actions on the fork.
+3. Update `config.yml` for the fork namespace, for example:
+
+   ```yaml
+   AICAGE_IMAGE_BASE_REPOSITORY: aicage-dev/aicage-image-base
+   AICAGE_IMAGE_BASE_SOURCE_REPOSITORY: aicage-dev/aicage-image-base
+   ```
+
+4. Push a Git tag to trigger the publish workflow. Prefer prerelease-style tags such as
+   `0.1.0-beta.1` or `0.1.0-alpha.1`.
+5. First release action run only:
+   - One image building job likely fails with "cannot delete last/only tag of a package".
+   - Wait until the action run ends with failure, but many other successful building jobs.
+   - Then "Rerun failed jobs" in that action run.
+6. Make the published GHCR package public.
 
 ## Build
 

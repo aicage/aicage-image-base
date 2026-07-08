@@ -16,10 +16,6 @@ run-name: Build Images for Base
         description: Version to build
         required: true
         type: string
-      image:
-        description: Image to build (owner/image without tag)
-        required: true
-        type: string
   workflow_dispatch:
     inputs:
       base:
@@ -35,11 +31,6 @@ run-name: Build Images for Base
         required: false
         type: string
         default: test
-      image:
-        description: Image to build (owner/image without tag)
-        required: false
-        type: string
-        default: ghcr.io/aicage/aicage-image-base
 
 permissions:
   contents: read
@@ -88,9 +79,11 @@ jobs:
       AICAGE_VERSION: ${{ inputs.aicage_version }}
     outputs:
       CREATED: ${{ steps.oci.outputs.created }}
+      IMAGE_NAME: ${{ steps.config.outputs.IMAGE_NAME }}
       INDEX_DIGEST_amd64: ${{ steps.out-amd64.outputs.INDEX_DIGEST }}
       INDEX_DIGEST_arm64: ${{ steps.out-arm64.outputs.INDEX_DIGEST }}
       REVISION: ${{ steps.oci.outputs.revision }}
+      SOURCE_URL: ${{ steps.config.outputs.IMAGE_SOURCE_URL }}
 
     steps:
       - name: Checkout
@@ -126,7 +119,8 @@ jobs:
           set -euo pipefail
           source scripts/common.sh
           load_config_file
-          IMAGE_NAME="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}"
+          IMAGE_NAME="$(get_image_base_ref)"
+          IMAGE_SOURCE_URL="$(get_image_base_source_url)"
           MANIFEST_VERSION_TAG="${IMAGE_NAME}:${BASE_ALIAS}-${AICAGE_VERSION}"
           MANIFEST_LATEST_TAG="${IMAGE_NAME}:${BASE_ALIAS}"
           IMAGE_VERSION_TAG="${MANIFEST_VERSION_TAG}-${ARCH_SUFFIX}"
@@ -137,6 +131,7 @@ jobs:
             echo "IMAGE_VERSION_TAG=${IMAGE_VERSION_TAG}"
             echo "IMAGE_LATEST_TAG=${IMAGE_LATEST_TAG}"
             echo "IMAGE_TEST_TAG=${IMAGE_TEST_TAG}"
+            echo "IMAGE_SOURCE_URL=${IMAGE_SOURCE_URL}"
             echo "FROM_IMAGE=$(get_base_field "${BASE_ALIAS}" from_image)"
             echo "OS_INSTALLER=$(get_base_build_field "${BASE_ALIAS}" os_installer)"
           } >> "$GITHUB_OUTPUT"
@@ -145,6 +140,7 @@ jobs:
             echo "IMAGE_VERSION_TAG=${IMAGE_VERSION_TAG}"
             echo "IMAGE_LATEST_TAG=${IMAGE_LATEST_TAG}"
             echo "IMAGE_TEST_TAG=${IMAGE_TEST_TAG}"
+            echo "IMAGE_SOURCE_URL=${IMAGE_SOURCE_URL}"
             echo "FROM_IMAGE=$(get_base_field "${BASE_ALIAS}" from_image)"
             echo "OS_INSTALLER=$(get_base_build_field "${BASE_ALIAS}" os_installer)"
           } >> "$GITHUB_ENV"
@@ -159,6 +155,7 @@ jobs:
           sbom: true
           build-args: |
             FROM_IMAGE=${{ env.FROM_IMAGE }}
+            IMAGE_SOURCE_URL=${{ env.IMAGE_SOURCE_URL }}
             OS_INSTALLER=${{ env.OS_INSTALLER }}
           tags: |
             ${{ env.IMAGE_TEST_TAG }}
@@ -277,8 +274,10 @@ jobs:
       - name: Use multi-arch publish action
         id: publish
         uses: gh-workflow/multiarch-image-publish@c5eac5dd8f7ed6b39fffc6e2c2242966b4917260  # 0.2.1
+        env:
+          IMAGE_NAME: ${{ needs.build.outputs.IMAGE_NAME }}
         with:
-          image_ref: ${{ inputs.image }}
+          image_ref: ${{ env.IMAGE_NAME }}
           tags: |
             ${{ inputs.base }}-${{ inputs.aicage_version }}
             ${{ inputs.base }}
@@ -286,13 +285,15 @@ jobs:
           annotations: |
             org.opencontainers.image.title=aicage-image-base
             org.opencontainers.image.description=Base image for aicage (${{ inputs.base }})
-            org.opencontainers.image.source=https://github.com/aicage/aicage-image-base
+            org.opencontainers.image.source=${{ needs.build.outputs.SOURCE_URL }}
             org.opencontainers.image.licenses=Apache-2.0
             org.opencontainers.image.revision=${{ needs.build.outputs.REVISION }}
             org.opencontainers.image.created=${{ needs.build.outputs.CREATED }}
             org.opencontainers.image.version=${{ inputs.aicage_version }}
 
       - name: Verify OCI annotations on published manifest
+        env:
+          IMAGE_NAME: ${{ needs.build.outputs.IMAGE_NAME }}
         run: |
           set -euo pipefail
           expected_description="Base image for aicage (${{ inputs.base }})"
@@ -300,7 +301,7 @@ jobs:
           expected_created="${{ needs.build.outputs.CREATED }}"
           expected_version="${{ inputs.aicage_version }}"
           docker buildx imagetools inspect \
-            --raw "${{ inputs.image }}@${{ steps.publish.outputs.manifest_digest }}" \
+            --raw "${IMAGE_NAME}@${{ steps.publish.outputs.manifest_digest }}" \
             | jq -e \
               --arg expected_description "$expected_description" \
               --arg expected_revision "$expected_revision" \
@@ -309,7 +310,7 @@ jobs:
               .annotations["org.opencontainers.image.title"] == "aicage-image-base"
               and .annotations["org.opencontainers.image.description"] == $expected_description
               and .annotations["org.opencontainers.image.source"]
-                == "https://github.com/aicage/aicage-image-base"
+                == "${{ needs.build.outputs.SOURCE_URL }}"
               and .annotations["org.opencontainers.image.licenses"] == "Apache-2.0"
               and .annotations["org.opencontainers.image.revision"] == $expected_revision
               and .annotations["org.opencontainers.image.created"] == $expected_created

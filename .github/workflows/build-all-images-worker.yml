@@ -32,7 +32,6 @@ jobs:
       ROOT_DIR: ${{ github.workspace }}
     outputs:
       MATRIX_BASES: ${{ steps.set-matrix.outputs.MATRIX_BASES }}
-      IMAGE_REF: ${{ steps.set-matrix.outputs.IMAGE_REF }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
@@ -69,10 +68,8 @@ jobs:
           jq '.' "${bases_file}"
 
           bases_json="$(cat "${bases_file}")"
-          image_ref="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}"
           {
             echo "MATRIX_BASES=${bases_json}"
-            echo "IMAGE_REF=${image_ref}"
           } >> "$GITHUB_OUTPUT"
 
   build:
@@ -86,5 +83,4 @@ jobs:
       base: ${{ matrix.base }}
       git_ref: ${{ github.ref_name }}
       aicage_version: ${{ github.ref_name }}
-      image: ${{ needs.matrix.outputs.IMAGE_REF }}
     secrets: inherit

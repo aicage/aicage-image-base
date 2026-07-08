@@ -60,10 +60,11 @@ load_config_file
 FROM_IMAGE="$(get_base_field "${BASE_ALIAS}" from_image)"
 OS_INSTALLER="$(get_base_build_field "${BASE_ALIAS}" os_installer)"
 OS_INSTALLER_PATH="${ROOT_DIR}/scripts/os-installers/${OS_INSTALLER}"
+IMAGE_SOURCE_URL="$(get_image_base_source_url)"
 [[ -f "${OS_INSTALLER_PATH}" ]] || die "OS installer not found for '${BASE_ALIAS}': ${OS_INSTALLER}"
 
-VERSION_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}-${AICAGE_VERSION}"
-LATEST_TAG="${AICAGE_IMAGE_REGISTRY}/${AICAGE_IMAGE_BASE_REPOSITORY}:${BASE_ALIAS}"
+VERSION_TAG="$(get_image_base_ref):${BASE_ALIAS}-${AICAGE_VERSION}"
+LATEST_TAG="$(get_image_base_ref):${BASE_ALIAS}"
 
 (
 echo "UpstreamBase=${FROM_IMAGE}"
@@ -73,6 +74,7 @@ echo "UpstreamBase=${FROM_IMAGE}"
 
 docker build \
   --build-arg "FROM_IMAGE=${FROM_IMAGE}" \
+  --build-arg "IMAGE_SOURCE_URL=${IMAGE_SOURCE_URL}" \
   --build-arg "OS_INSTALLER=${OS_INSTALLER}" \
   --tag "${VERSION_TAG}" \
   --tag "${LATEST_TAG}" \

@@ -22,5 +22,5 @@ Example:
 
 ## Contributing
 
-See `DEVELOPMENT.md` for how to build, test, and publish new base images. AI coding agents should
-also read `AGENTS.md`.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for how to build, test, and publish new base images. AI coding agents should
+also read [AGENTS.md](AGENTS.md).

@@ -24,10 +24,6 @@ name: GHCR Cleanup
           - error
         default: info
 
-env:
-  # Repo-specific high-level knobs
-  PACKAGE_NAME: aicage-image-base
-
 permissions:
   contents: read
   packages: write
@@ -42,19 +38,23 @@ jobs:
       release_list: ${{ steps.regex.outputs.release_list }}
       base_list: ${{ steps.regex.outputs.base_list }}
     steps:
-      - name: Export config
-        id: config
-        shell: bash
-        run: |
-          set -euo pipefail
-          {
-            echo "package_name=${PACKAGE_NAME}"
-          } >> "${GITHUB_OUTPUT}"
-
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           fetch-depth: 0
+
+      - name: Export config
+        id: config
+        shell: bash
+        env:
+          ROOT_DIR: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          source scripts/common.sh
+          load_config_file
+          {
+            echo "package_name=${AICAGE_IMAGE_BASE_REPOSITORY#*/}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Build base/release exclude-tags-regex
         id: regex

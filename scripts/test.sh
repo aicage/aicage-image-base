@@ -14,7 +14,7 @@ Options:
   -h, --help      Show this help and exit
 
 Examples:
-  scripts/test.sh --image ghcr.io/aicage/aicage-image-base:ubuntu
+  scripts/test.sh --image ghcr.io/aicage/aicage-image-base:ubuntu --base ubuntu
 USAGE
   exit 1
 }

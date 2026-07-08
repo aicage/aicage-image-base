@@ -1,4 +1,5 @@
 # aicage settings
 AICAGE_IMAGE_REGISTRY: ghcr.io
 AICAGE_IMAGE_BASE_REPOSITORY: aicage/aicage-image-base
+AICAGE_IMAGE_BASE_SOURCE_REPOSITORY: aicage/aicage-image-base
 AICAGE_VERSION: dev
