@@ -85,6 +85,25 @@
   [ "${home}" = "/root" ]
 }
 
+@test "plain run without runtime env vars stays root and works" {
+  run docker run --rm \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      printf "%s\n%s\n%s\n%s\n" "$(id -u)" "$(id -g)" "$(id -un)" "${HOME}"
+    '
+  [ "$status" -eq 0 ]
+  mapfile -t lines <<<"${output}"
+  uid="${lines[0]}"
+  gid="${lines[1]}"
+  user="${lines[2]}"
+  home="${lines[3]}"
+  [ "${uid}" -eq 0 ]
+  [ "${gid}" -eq 0 ]
+  [ "${user}" = "root" ]
+  [ "${home}" = "/root" ]
+}
+
 @test "existing home directory is reused for target user" {
   run docker run --rm \
     --env AICAGE_WORKSPACE=/workspace \
@@ -109,4 +128,28 @@
   [ "${home}" = "/home/demo" ]
   [ "${home_uid}" -eq 2234 ]
   [ "${home_gid}" -eq 3234 ]
+}
+
+@test "reduced contract supports linux host-user mode directly" {
+  run docker run --rm \
+    --env AICAGE_WORKSPACE=/workspace \
+    --env AICAGE_UID=1234 \
+    --env AICAGE_GID=2345 \
+    --env AICAGE_HOST_USER=demo \
+    --env AICAGE_HOME=/home/demo \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      printf "%s\n%s\n%s\n%s\n" "$(id -u)" "$(id -g)" "$(id -un)" "${HOME}"
+    '
+  [ "$status" -eq 0 ]
+  mapfile -t lines <<<"${output}"
+  uid="${lines[0]}"
+  gid="${lines[1]}"
+  user="${lines[2]}"
+  home="${lines[3]}"
+  [ "${uid}" -eq 1234 ]
+  [ "${gid}" -eq 2345 ]
+  [ "${user}" = "demo" ]
+  [ "${home}" = "/home/demo" ]
 }

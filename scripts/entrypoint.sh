@@ -5,30 +5,17 @@ set -euo pipefail
 # Required env vars (best-effort defaults are applied):
 # - AICAGE_WORKSPACE: container working directory (defaults to /workspace)
 # - AICAGE_ENTRYPOINT_CMD: command to exec (defaults to bash)
-# - AICAGE_HOST_USER: host username (required on Linux)
-# - AICAGE_UID/AICAGE_GID: linux host user mapping (required on Linux)
-# - AICAGE_HOME: posix host home path
-# - AICAGE_HOST_IS_LINUX: set to non-empty on Linux hosts; empty otherwise
+# - AICAGE_UID/AICAGE_GID: target runtime uid/gid
+# - AICAGE_HOST_USER: target runtime username
+# - AICAGE_HOME: target runtime home
+# - AICAGE_MOUNT_HOME: home mount anchor when it differs from active HOME
 
 AICAGE_WORKSPACE="${AICAGE_WORKSPACE:-/workspace}"
-
-if [[ -z "${AICAGE_HOST_IS_LINUX:-}" ]]; then
-  TARGET_USER="root"
-  AICAGE_UID="0"
-  AICAGE_GID="0"
-else
-  TARGET_USER="${AICAGE_HOST_USER:-aicage}"
-  AICAGE_UID="${AICAGE_UID:-1000}"
-  AICAGE_GID="${AICAGE_GID:-1000}"
-fi
-
-if [[ -z "${AICAGE_HOME:-}" ]]; then
-  if [[ "${TARGET_USER}" == "root" ]]; then
-    AICAGE_HOME="/root"
-  else
-    AICAGE_HOME="/home/${TARGET_USER}"
-  fi
-fi
+AICAGE_UID="${AICAGE_UID:-0}"
+AICAGE_GID="${AICAGE_GID:-0}"
+AICAGE_HOST_USER="${AICAGE_HOST_USER:-root}"
+AICAGE_HOME="${AICAGE_HOME:-/root}"
+MOUNT_HOME="${AICAGE_MOUNT_HOME:-${AICAGE_HOME}}"
 
 is_mountpoint() {
   local path="$1"
@@ -117,7 +104,7 @@ list_home_mount_points() {
     # shellcheck disable=SC2086
     set -- ${line}
     mount_point="$5"
-    if [[ "${mount_point}" == "${AICAGE_HOME}" || "${mount_point}" == "${AICAGE_HOME}/"* ]]; then
+    if [[ "${mount_point}" == "${MOUNT_HOME}" || "${mount_point}" == "${MOUNT_HOME}/"* ]]; then
       printf '%s\n' "${mount_point}"
     fi
   done < "${mountinfo}" | sort -u
@@ -171,14 +158,14 @@ ensure_home_mount_parents_owned() {
   mapfile -t mount_points_filtered < <(filter_nested_mount_points "${mount_points[@]}")
   visited_dirs=()
 
-  if [ -d "${AICAGE_HOME}" ] && ! is_mountpoint "${AICAGE_HOME}"; then
-    chown "${uid}:${gid}" "${AICAGE_HOME}"
+  if [ -d "${MOUNT_HOME}" ] && ! is_mountpoint "${MOUNT_HOME}"; then
+    chown "${uid}:${gid}" "${MOUNT_HOME}"
   fi
 
   for mount_point in "${mount_points_filtered[@]}"; do
     current="$(dirname "${mount_point}")"
-    while [[ "${current}" == "${AICAGE_HOME}" || "${current}" == "${AICAGE_HOME}/"* ]]; do
-      if [[ "${current}" == "${AICAGE_HOME}" ]]; then
+    while [[ "${current}" == "${MOUNT_HOME}" || "${current}" == "${MOUNT_HOME}/"* ]]; do
+      if [[ "${current}" == "${MOUNT_HOME}" ]]; then
         break
       fi
       if [[ -n "${visited_dirs[$current]:-}" ]]; then
@@ -202,13 +189,13 @@ mirror_windows_home_mounts_to_root() {
   local mount_point rel_path root_link timestamp backup_path
   local -a mount_points mount_points_filtered
 
-  if [[ -n "${AICAGE_HOST_IS_LINUX:-}" ]]; then
+  if [[ "${AICAGE_UID}" != "0" || "${AICAGE_GID}" != "0" ]]; then
     return 0
   fi
-  if [[ "${TARGET_USER}" != "root" ]]; then
+  if [[ "${AICAGE_HOME}" != "/root" ]]; then
     return 0
   fi
-  if [[ "${AICAGE_HOME}" == "/root" ]]; then
+  if [[ "${MOUNT_HOME}" == "/root" ]]; then
     return 0
   fi
 
@@ -217,10 +204,10 @@ mirror_windows_home_mounts_to_root() {
 
   for mount_point in "${mount_points_filtered[@]}"; do
     mount_point="${mount_point%/}"
-    if [[ "${mount_point}" == "${AICAGE_HOME}" ]]; then
+    if [[ "${mount_point}" == "${MOUNT_HOME}" ]]; then
       continue
     fi
-    rel_path="${mount_point#"${AICAGE_HOME}"/}"
+    rel_path="${mount_point#"${MOUNT_HOME}"/}"
     if [[ "${rel_path}" == "${mount_point}" ]]; then
       continue
     fi
@@ -244,13 +231,13 @@ mirror_windows_home_mounts_to_root() {
 setup_user_and_group() {
   local existing_user_name existing_user_uid existing_group_name primary_group_name
 
-  existing_user_uid="$(getent passwd "${TARGET_USER}" | cut -d: -f3 || true)"
+  existing_user_uid="$(getent passwd "${AICAGE_HOST_USER}" | cut -d: -f3 || true)"
   if [[ -n "${existing_user_uid}" && "${existing_user_uid}" != "${AICAGE_UID}" ]]; then
-    userdel -r "${TARGET_USER}" 2>/dev/null
+    userdel -r "${AICAGE_HOST_USER}" 2>/dev/null
   fi
 
   existing_user_name="$(getent passwd "${AICAGE_UID}" | cut -d: -f1 || true)"
-  if [[ -n "${existing_user_name}" && "${existing_user_name}" != "${TARGET_USER}" ]]; then
+  if [[ -n "${existing_user_name}" && "${existing_user_name}" != "${AICAGE_HOST_USER}" ]]; then
     userdel -r "${existing_user_name}" 2>/dev/null
   fi
 
@@ -258,17 +245,15 @@ setup_user_and_group() {
   if [[ -n "${existing_group_name}" ]]; then
     primary_group_name="${existing_group_name}"
   else
-    groupadd -g "${AICAGE_GID}" "${TARGET_USER}"
-    primary_group_name="${TARGET_USER}"
+    groupadd -g "${AICAGE_GID}" "${AICAGE_HOST_USER}"
+    primary_group_name="${AICAGE_HOST_USER}"
   fi
 
   if [[ -d "${AICAGE_HOME}" ]]; then
-    useradd --no-create-home -u "${AICAGE_UID}" -g "${primary_group_name}" -d "${AICAGE_HOME}" -s /bin/bash "${TARGET_USER}"
+    useradd --no-create-home -u "${AICAGE_UID}" -g "${primary_group_name}" -d "${AICAGE_HOME}" -s /bin/bash "${AICAGE_HOST_USER}"
   else
-    useradd --create-home -u "${AICAGE_UID}" -g "${primary_group_name}" -d "${AICAGE_HOME}" -s /bin/bash "${TARGET_USER}"
+    useradd --create-home -u "${AICAGE_UID}" -g "${primary_group_name}" -d "${AICAGE_HOME}" -s /bin/bash "${AICAGE_HOST_USER}"
   fi
-  TARGET_HOME="${AICAGE_HOME}"
-
   copy_skel_if_safe "${AICAGE_HOME}" "${AICAGE_UID}" "${AICAGE_GID}"
 }
 
@@ -292,7 +277,7 @@ setup_docker_group() {
   fi
 
   if [[ -n "${docker_gid_group}" ]]; then
-    usermod -aG "${docker_gid_group}" "${TARGET_USER}"
+    usermod -aG "${docker_gid_group}" "${AICAGE_HOST_USER}"
   fi
 }
 
@@ -307,8 +292,9 @@ ensure_home_is_not_mounted "/home"
 ensure_home_is_not_mounted "/root"
 
 # set up user and group
-if [[ "${TARGET_USER}" == "root" ]]; then
-  TARGET_HOME="/root"
+if [[ "${AICAGE_UID}" == "0" && "${AICAGE_GID}" == "0" ]]; then
+  AICAGE_HOST_USER="${AICAGE_HOST_USER:-root}"
+  AICAGE_HOME="${AICAGE_HOME:-/root}"
 else
   setup_user_and_group
   setup_docker_group
@@ -316,9 +302,12 @@ else
 fi
 
 ensure_home_is_not_mounted "${AICAGE_HOME}"
+if [[ "${MOUNT_HOME}" != "${AICAGE_HOME}" ]]; then
+  ensure_home_is_not_mounted "${MOUNT_HOME}"
+fi
 mirror_windows_home_mounts_to_root
 apply_timezone
-set_target_env "${TARGET_HOME}" "${TARGET_USER}"
+set_target_env "${AICAGE_HOME}" "${AICAGE_HOST_USER}"
 
 if [[ ! -e "${AICAGE_WORKSPACE}" ]]; then
   mkdir -p "${AICAGE_WORKSPACE}"
@@ -327,7 +316,7 @@ cd "${AICAGE_WORKSPACE}"
 
 : "${AICAGE_ENTRYPOINT_CMD:=bash}"
 
-if [[ "${TARGET_USER}" == "root" ]]; then
+if [[ "${AICAGE_HOST_USER}" == "root" ]]; then
   exec "${AICAGE_ENTRYPOINT_CMD}" "$@"
 else
   # switch to user

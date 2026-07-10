@@ -1,204 +1,224 @@
-# Entrypoint Pre-Rootless Analysis
+# Entrypoint Analysis
 
-This document analyzes the current
-[`scripts/entrypoint.sh`](../scripts/entrypoint.sh) before any rootless Docker
-logic is added.
+This document analyzes [`scripts/entrypoint.sh`](../scripts/entrypoint.sh) as it
+exists now.
 
 Scope:
 
-- Ignore the Python caller.
+- Ignore the current Python caller.
 - Treat the entrypoint as a standalone contract.
 - Focus on what it reacts to, especially environment variables.
-- Identify complexity that already exists before rootless support.
-- Identify where rootless support would have to hook into the current design.
+- Focus on current behavior only.
+- Do not discuss future rootless support here.
 
 ## Executive Summary
 
-The current script already has non-trivial complexity before rootless support.
+The current script is not only a "switch to the right user" wrapper.
 
 It combines these concerns:
 
-1. Select Linux-host mode vs non-Linux compatibility mode.
+1. Decide root vs non-root runtime behavior.
 2. Create or reuse a runtime user inside the container.
-3. Repair ownership for home and workspace paths.
-4. Repair Docker socket group access.
-5. Mirror non-Linux home mounts into `/root`.
-6. Apply timezone configuration.
+3. Repair ownership for workspace and mounted-home parent paths.
+4. Repair Docker socket group access for the runtime user.
+5. Mirror mounted home content into `/root` when active `HOME` is `/root`.
+6. Apply timezone settings.
 
-So the current complexity is not mainly "extra rootless logic". The script
-already has multiple responsibilities and multiple filesystem side effects.
+So the complexity does not mainly come from the env var count. It comes from the
+fact that the script mutates accounts, ownership, mount-facing paths, and system
+configuration before it finally `exec`s the target command.
 
-The key point for future simplification is this:
-
-- the current script is not just an "identity mapper"
-- it is also a mount-repair and compatibility layer
-
-That matters because rootless support would not only change uid/gid behavior. It
-would also interact with home selection, mount repair, and Docker socket
-handling.
-
-## Current Direct Inputs
+## Direct Inputs
 
 ### Environment variables read directly
 
-| Variable | Required? | Current role |
-| --- | --- | --- |
-| `AICAGE_WORKSPACE` | No | Working directory and workspace ownership target. |
-| `AICAGE_ENTRYPOINT_CMD` | No | Final command to execute. |
-| `AICAGE_HOST_USER` | Linux-host mode only | Runtime username inside the container. |
-| `AICAGE_UID` | Linux-host mode only | Runtime uid inside the container. |
-| `AICAGE_GID` | Linux-host mode only | Runtime gid inside the container. |
-| `AICAGE_HOME` | No | Desired home path and mount namespace anchor. |
-| `AICAGE_HOST_IS_LINUX` | No | Mode selector: Linux host vs non-Linux host. |
-| `TZ` | No | Timezone override. |
+| Variable | Required? | Meaning in script | Default in script |
+| --- | --- | --- | --- |
+| `AICAGE_WORKSPACE` | No | Working directory | `/workspace` |
+| `AICAGE_ENTRYPOINT_CMD` | No | Final command to execute | `bash` |
+| `AICAGE_UID` | No | Target runtime uid | `0` |
+| `AICAGE_GID` | No | Target runtime gid | `0` |
+| `AICAGE_HOST_USER` | No | Target runtime username | `root` |
+| `AICAGE_HOME` | No | Active home path | `/root` |
+| `AICAGE_MOUNT_HOME` | No | Home mount anchor when different from active `HOME` | `AICAGE_HOME` |
+| `TZ` | No | Requested timezone | unset |
 
-### Other inputs it reacts to
+### Other inputs the script reacts to
 
 | Input | Why it matters |
 | --- | --- |
 | `$@` | Passed to the final command. |
 | `/etc/skel` | Copied into home when safe. |
-| `/proc/self/mountinfo` | Used to discover mounts under `AICAGE_HOME`. |
-| Existing passwd/group state | Can trigger user and group deletion or creation. |
+| `/proc/self/mountinfo` | Used to discover mountpoints under `AICAGE_MOUNT_HOME` or `AICAGE_HOME`. |
+| Existing passwd/group state | Can trigger user deletion, user creation, and group creation. |
 | `/var/run/docker.sock` | Triggers Docker socket group repair. |
-| Existing filesystem layout | Drives mount safety checks, symlink creation, and `chown`. |
+| Existing filesystem layout | Drives mountpoint checks, `chown`, directory creation, and symlink mirroring. |
 
-## Current Mode Model
+## Effective Modes
 
-Before rootless support, the script has two effective modes.
+The current script has two effective modes.
 
-### Mode 1: Linux host mode
-
-Trigger:
-
-- `AICAGE_HOST_IS_LINUX` is set
-
-Behavior:
-
-- `TARGET_USER` becomes `AICAGE_HOST_USER` or `aicage`
-- `AICAGE_UID` and `AICAGE_GID` default to `1000`
-- a non-root user is created or recreated
-- `HOME` becomes `AICAGE_HOME`
-- `gosu` is used to run the final command as the target uid
-- Docker socket group repair may run
-- workspace and home-parent ownership repair may run
-
-### Mode 2: Non-Linux compatibility mode
+### Mode 1: Non-root runtime user mode
 
 Trigger:
 
-- `AICAGE_HOST_IS_LINUX` is unset
+- `AICAGE_UID != 0` or `AICAGE_GID != 0`
 
 Behavior:
 
-- `TARGET_USER` becomes `root`
-- `AICAGE_UID` and `AICAGE_GID` are forced to `0`
-- no dynamic user is created
-- active `HOME` becomes `/root`
-- mounts under `AICAGE_HOME` may be mirrored into `/root`
-- final command runs directly as root
+- create or recreate the runtime user
+- create or reuse the runtime primary group
+- copy `/etc/skel` into `AICAGE_HOME` when safe
+- repair Docker socket group access
+- `chown` the workspace if it already exists and is not a mountpoint
+- `chown` non-mounted parent directories under the home mount anchor
+- set `HOME=AICAGE_HOME`
+- `gosu` to `AICAGE_UID`
 
-## Current High-Level Decision Flow
+### Mode 2: Root runtime mode
 
-The main control flow today is:
+Trigger:
+
+- `AICAGE_UID == 0` and `AICAGE_GID == 0`
+
+Behavior:
+
+- do not create a runtime user
+- do not repair Docker socket group access through `usermod`
+- do not run workspace or home-parent ownership repair
+- set `HOME=AICAGE_HOME`
+- if `AICAGE_HOME=/root` but mounted home paths live somewhere else, mirror those
+  mountpoints into `/root`
+- execute the final command directly as root
+
+## High-Level Flow
+
+The main control flow is:
 
 1. Derive `AICAGE_WORKSPACE`.
-2. Decide Linux-host mode vs non-Linux compatibility mode.
-3. Derive `AICAGE_HOME`.
-4. Refuse unsafe `/home` and `/root` mount situations.
-5. In Linux-host mode:
+2. Derive `AICAGE_UID`, `AICAGE_GID`, `AICAGE_HOST_USER`, `AICAGE_HOME`.
+3. Derive the mount anchor as `AICAGE_MOUNT_HOME` or `AICAGE_HOME`.
+4. Refuse unsafe mount situations for `/home` and `/root`.
+5. If in non-root mode:
    - create or recreate user/group
-   - repair Docker socket group
+   - repair Docker socket group access
    - repair workspace and home-parent ownership
-6. In non-Linux compatibility mode:
-   - keep root execution
-7. Refuse unsafe final `AICAGE_HOME` mount situations.
-8. Mirror non-Linux home mounts into `/root`.
-9. Apply timezone.
-10. Export `HOME`, `USER`, and `PATH`.
-11. Ensure workspace exists and `cd` into it.
-12. `exec` either directly as root or via `gosu`.
+6. Refuse unsafe mount situations for `AICAGE_HOME` and maybe `AICAGE_MOUNT_HOME`.
+7. Mirror mounted home content into `/root` when in root mode with a separate
+   mount anchor.
+8. Apply timezone.
+9. Export `HOME`, `USER`, and adjusted `PATH`.
+10. Ensure the workspace exists and `cd` into it.
+11. `exec` either directly as root or via `gosu`.
+
+## Behavior Matrix
+
+| Behavior | Non-root runtime user | Root runtime |
+| --- | --- | --- |
+| Create dynamic user/group | Yes | No |
+| Add runtime user to Docker socket group | Yes | No |
+| Copy `/etc/skel` into `AICAGE_HOME` | Yes | No |
+| `chown` existing workspace | Yes | No |
+| `chown` non-mounted home parent directories | Yes | No |
+| Mirror mountpoints into `/root` | No | Sometimes |
+| Active `HOME` becomes `AICAGE_HOME` | Yes | Yes |
+| Run final command through `gosu` | Yes | No |
+| Apply `TZ` | Yes | Yes |
+| Refuse mounted `/home` or `/root` roots | Yes | Yes |
 
 ## What Each Env Var Actually Controls
 
-### `AICAGE_HOST_IS_LINUX`
-
-This is the primary mode flag today.
-
-It does much more than signal host OS:
-
-- selects root vs non-root execution model
-- selects whether user/group creation runs
-- selects whether Docker socket group repair runs
-- selects whether home mounts are mirrored into `/root`
-- indirectly changes what `HOME` becomes
-
-This is not a minor hint. It is the top-level behavior selector.
-
-### `AICAGE_HOME`
-
-This is the most overloaded input in the current script.
-
-It affects:
-
-- default home selection
-- what counts as a home-related mount
-- what mount paths are considered unsafe
-- where `/etc/skel` may be copied
-- which directories may be `chown`ed
-- what gets mirrored into `/root` in non-Linux compatibility mode
-- what `HOME` becomes in Linux-host mode
-
-So `AICAGE_HOME` is not only a desired home path. It is also the anchor for the
-mount-repair logic.
-
 ### `AICAGE_UID` and `AICAGE_GID`
 
-In Linux-host mode they control:
+These are the main mode selectors.
 
-- created user identity
-- created group identity
-- ownership repair for home and workspace
-- effective runtime identity under `gosu`
+They control:
 
-In non-Linux compatibility mode they are ignored because the script overwrites
-them to `0:0`.
+- root vs non-root mode
+- created runtime uid/gid in non-root mode
+- ownership repair targets
+- whether `gosu` is used
+
+They also affect the root-mirroring helper, because that helper only runs when
+uid and gid are both `0`.
 
 ### `AICAGE_HOST_USER`
 
-In Linux-host mode it controls:
+In non-root mode it controls:
 
 - target username
-- default home path when `AICAGE_HOME` is unset
-- account creation and replacement behavior
+- user deletion/recreation behavior
+- the username added to the Docker socket group
+- `USER` exported into the child environment
 
-In non-Linux compatibility mode it is irrelevant to runtime identity.
+In root mode it mainly matters as exported `USER`, and for the final
+`if [[ "${AICAGE_HOST_USER}" == "root" ]]` branch.
+
+Important nuance:
+
+- the script uses uid/gid to decide whether to behave as root
+- but it uses username to decide whether to `exec` directly or through `gosu`
+
+That means callers should keep these values coherent. The intended root contract
+is `AICAGE_UID=0`, `AICAGE_GID=0`, `AICAGE_HOST_USER=root`.
+
+### `AICAGE_HOME`
+
+This is the most overloaded path input.
+
+It controls:
+
+- the active `HOME`
+- where the runtime user is created
+- where `/etc/skel` may be copied
+- a mount-safety check target
+- the base path used by root-mode mount mirroring
+
+So `AICAGE_HOME` is not just cosmetic shell state. It is part of the script's
+filesystem model.
+
+### `AICAGE_MOUNT_HOME`
+
+This is the second important path input.
+
+It controls:
+
+- which mountpoints count as "home-related mounts"
+- which directories may be `chown`ed in non-root mode
+- which mountpoints may be mirrored into `/root` in root mode
+- the second mount-safety check when it differs from `AICAGE_HOME`
+
+This variable exists because the script sometimes needs two different concepts:
+
+- active runtime `HOME`
+- mount namespace anchor for host-home content
+
+When those are the same, `AICAGE_MOUNT_HOME` adds no behavior. When they differ,
+it changes a lot.
 
 ### `AICAGE_WORKSPACE`
 
 It controls:
 
-- which directory is `cd`'d into
-- which directory may be `chown`ed in Linux-host mode
-- which directory is created if missing
+- where the script `cd`s
+- which directory may be `mkdir -p`'d
+- which directory may be `chown`ed in non-root mode
 
 Important nuance:
 
-- the script sets a default internally
-- it does not export that default back into the child environment
+- the script gives it an internal default of `/workspace`
+- it does not explicitly export that default
 
-So the script can operate on `/workspace` even when the child process sees no
-`AICAGE_WORKSPACE` variable.
+So the script can operate on `/workspace` even if the child process does not see
+`AICAGE_WORKSPACE` in its environment.
 
 ### `AICAGE_ENTRYPOINT_CMD`
 
-This only chooses the final executable.
+This only selects the final executable.
 
-It does not affect earlier setup behavior.
+It does not change earlier setup behavior.
 
 ### `TZ`
-
-This is separate from identity behavior.
 
 If set, it mutates:
 
@@ -207,13 +227,28 @@ If set, it mutates:
 
 If invalid, startup fails.
 
-## Current Side Effects
+## Function-Level Behavior Map
 
-The script mutates more than one might first expect.
+<!-- pyml disable md013 -->
+| Function | Trigger | What it does |
+| --- | --- | --- |
+| `ensure_home_is_not_mounted` | Always called for home roots | Refuses startup if the path or a parent is a mountpoint. |
+| `copy_skel_if_safe` | Non-root user setup | Copies `/etc/skel` into the target home when the home is not a mountpoint. |
+| `apply_timezone` | `TZ` set | Replaces system timezone files. |
+| `list_home_mount_points` | Called by home-mount helpers | Lists mountpoints under the mount-home anchor. |
+| `filter_nested_mount_points` | Called by home-mount helpers | Keeps only top-level mountpoints. |
+| `ensure_home_mount_parents_owned` | Non-root mode | `chown`s non-mounted parent directories under the mount-home anchor. |
+| `mirror_windows_home_mounts_to_root` | Root mode with separate mount anchor | Symlinks `/root/...` to mounted home paths. |
+| `setup_user_and_group` | Non-root mode | Rebuilds the runtime account and home model. |
+| `setup_docker_group` | Non-root mode and socket exists | Aligns socket gid and adds the runtime user to that group. |
+| `setup_workspace` | Non-root mode | Repairs workspace and home-parent ownership. |
+<!-- pyml enable md013 -->
+
+## Current Side Effects
 
 ### Account database mutations
 
-In Linux-host mode it may:
+In non-root mode the script may:
 
 - delete an existing user with the target name
 - delete an existing user that already owns the target uid
@@ -224,235 +259,103 @@ In Linux-host mode it may:
 
 ### Filesystem ownership mutations
 
-In Linux-host mode it may:
+In non-root mode the script may:
 
-- `chown` `AICAGE_HOME`
-- `chown` non-mounted parent directories under `AICAGE_HOME`
 - `chown` `AICAGE_WORKSPACE`
-- `chown` files copied from `/etc/skel`
+- `chown` the mount-home anchor when it is a directory and not a mountpoint
+- `chown` non-mounted parent directories under mounted home paths
+- `chown` copied `/etc/skel` content
 
 ### Filesystem layout mutations
 
-In non-Linux compatibility mode it may:
+In root mode the script may:
 
 - create directories under `/root`
-- replace existing `/root/...` entries with timestamped backups
-- create symlinks from `/root/...` into mountpoints under `AICAGE_HOME`
+- move existing `/root/...` entries aside with timestamped backup names
+- create symlinks from `/root/...` into mounted home paths
 
 ### System config mutations
 
-It may:
+In all modes the script may:
 
 - replace timezone files
 
-## Existing Complexity Before Rootless
+## Existing Complexity
 
-The current complexity comes from these existing design choices.
+The main complexity already present in the current script comes from these
+design choices.
 
-### 1. Two different home models already exist
+### 1. The script has both an identity model and a mount model
 
-Today the script already has two home semantics:
+`AICAGE_UID`, `AICAGE_GID`, and `AICAGE_HOST_USER` describe runtime identity.
 
-- Linux-host mode: active `HOME` is `AICAGE_HOME`
-- non-Linux compatibility mode: active `HOME` is `/root`, while `AICAGE_HOME`
-  still defines a separate mount namespace
+`AICAGE_HOME` and `AICAGE_MOUNT_HOME` describe path semantics and mount
+semantics.
 
-So even before rootless there is already a split between:
+Those are related, but not identical, which is why a single `HOME`-like
+variable is not enough for all current cases.
 
-- "where the user actually lives"
-- "where host-related home mounts conceptually live"
+### 2. Root mode is not just "skip gosu"
 
-### 2. User identity and mount repair are coupled
+Root mode also changes:
 
-The script does not just create a user and stop.
+- whether ownership repair runs
+- whether Docker socket group repair runs
+- whether mount mirroring into `/root` may run
 
-It assumes that once a uid/gid is chosen, ownership repairs must also happen for
-workspace and for home-related mount parents.
+So uid `0` is not only an identity choice. It also selects a different set of
+filesystem side effects.
 
-That coupling is a major source of complexity.
+### 3. `AICAGE_HOME` and `AICAGE_MOUNT_HOME` both carry real semantics
 
-### 3. Docker socket support is built into the identity path
+The script needs to know:
 
-`setup_docker_group()` is not an optional add-on. It is embedded into the Linux
-host-user path.
+- where the process should live
+- where the mounted host-home namespace lives
 
-That means the script assumes:
+When those differ, the current behavior depends on both.
 
-- Linux host mode implies a non-root runtime user
-- if Docker socket exists, that user may need group surgery to access it
+## Suspicious or Surprising Behavior
 
-### 4. Non-Linux compatibility is not just "run as root"
+### Root execution is keyed off username at the final `exec`
 
-The non-Linux path also mirrors selected mounts into `/root`.
+The script decides root vs non-root setup from uid/gid, but the final branch is:
 
-So it is already a distinct compatibility mode with its own behavior, not just a
-special case.
+```bash
+if [[ "${AICAGE_HOST_USER}" == "root" ]]; then
+  exec "${AICAGE_ENTRYPOINT_CMD}" "$@"
+else
+  exec gosu "${AICAGE_UID}" "${AICAGE_ENTRYPOINT_CMD}" "$@"
+fi
+```
 
-## Current Behavior Matrix
+So a caller can create inconsistent input such as:
 
-| Behavior | Linux host mode | Non-Linux compatibility mode |
-| --- | --- | --- |
-| Dynamic user creation | Yes | No |
-| Runtime execution as root | No | Yes |
-| `gosu` final exec | Yes | No |
-| Active `HOME` is `AICAGE_HOME` | Yes | No |
-| Active `HOME` is `/root` | No | Yes |
-| Mirror home mounts into `/root` | No | Yes |
-| Docker socket group repair | Yes | No |
-| Home-parent ownership repair | Yes | No |
-| Workspace ownership repair | Yes | No |
-| Timezone application | Yes | Yes |
+- `AICAGE_UID=0`
+- `AICAGE_GID=0`
+- `AICAGE_HOST_USER=demo`
 
-## Suspicious or Surprising Current Behavior
-
-These are worth calling out independently from any rootless discussion.
-
-### `AICAGE_WORKSPACE` default is internal only
-
-The script defaults `AICAGE_WORKSPACE` to `/workspace`, but the child process
-does not inherit that default unless it was present in the original environment.
-
-This creates a split between:
-
-- entrypoint internal behavior
-- child-process visible environment
+That combination does not match the intended contract.
 
 ### Fresh workspace creation happens after ownership repair
 
-In Linux-host mode:
+Order today:
 
 1. `setup_workspace` may `chown` an existing workspace
-2. later the script may `mkdir -p "${AICAGE_WORKSPACE}"` as root
-3. then it drops privileges with `gosu`
+2. later, if the workspace is missing, `mkdir -p "${AICAGE_WORKSPACE}"` runs as root
+3. then the final command runs, maybe under `gosu`
 
-So a newly created non-mounted workspace may be root-owned.
+So a freshly created non-mounted workspace can end up root-owned.
 
-That is an existing pre-rootless asymmetry.
+That is not mainly a mode problem, but it is part of the current behavior.
 
-### `AICAGE_HOME` carries two meanings
+## Minimal Mental Model
 
-It is both:
+If someone only remembers one summary, it should be this:
 
-- desired user home path
-- mount namespace anchor for repair and mirroring logic
-
-That makes the variable powerful, but also conceptually heavy.
-
-## What Rootless Would Need to Change
-
-Without proposing a final design, rootless support would need to answer these
-questions against the current pre-rootless contract.
-
-### 1. Should rootless behave more like Linux-host mode or more like non-Linux mode?
-
-Linux-host mode today means:
-
-- non-root execution
-- dynamic user creation
-- ownership repair
-- `HOME=AICAGE_HOME`
-
-Non-Linux compatibility mode today means:
-
-- root execution
-- no dynamic user creation
-- no ownership repair
-- active `HOME=/root`
-
-Rootless Docker likely wants a mixed shape:
-
-- root execution
-- no dynamic user creation
-- but probably still `HOME=AICAGE_HOME`
-
-That mixed shape does not currently exist.
-
-### 2. Should Docker socket group repair still run?
-
-Today that logic only exists in the Linux host-user path.
-
-For rootless Docker, the answer may be "no", but the current script structure
-does not isolate that concern cleanly from the rest of Linux-host mode.
-
-### 3. Should workspace and home-parent ownership repair still run?
-
-Today those repairs are tightly tied to Linux host-user mode.
-
-If rootless does not need them, then rootless cannot simply reuse that mode.
-
-### 4. What should active `HOME` be?
-
-This is one of the most important questions.
-
-The current script only supports:
-
-- non-root with `HOME=AICAGE_HOME`
-- root with `HOME=/root`
-
-If rootless wants:
-
-- root with `HOME=AICAGE_HOME`
-
-then that is a third home model.
-
-That is exactly why rootless added on top of the current script can quickly make
-the script harder to reason about.
-
-## Simplification Opportunities Before Any Rootless Work
-
-These are the areas where cleanup likely helps before adding any new mode.
-
-### Opportunity 1: Separate mode selection from side effects
-
-The script would be easier to reason about if it first computed a clear runtime
-mode and only then ran mode-specific actions.
-
-Today the mode decision leaks into multiple later functions.
-
-### Opportunity 2: Separate home semantics from mount-repair semantics
-
-Right now `AICAGE_HOME` does too much.
-
-If home selection and mount namespace selection were conceptually separate, the
- script would likely be easier to extend.
-
-### Opportunity 3: Separate identity setup from Docker socket support
-
-`setup_docker_group()` is currently coupled to Linux-host mode.
-
-If Docker socket support were its own explicit concern, later mode additions
-would be easier.
-
-### Opportunity 4: Decide whether non-Linux compatibility is a first-class mode
-
-Right now it clearly is.
-
-If that remains true, it should probably be treated as an explicit mode in the
-mental model and documentation, not just as the else-branch of Linux behavior.
-
-## Recommendation
-
-Before adding any rootless logic, the current script should be understood as
-already having:
-
-1. one Linux host-user mode
-2. one non-Linux root compatibility mode
-3. several side-effect subsystems layered onto those modes
-
-The most useful pre-rootless cleanup would probably be:
-
-1. document the current two-mode model explicitly
-2. make side-effect subsystems easier to see as separate concerns
-3. fix any current asymmetries such as workspace creation vs ownership repair
-
-Then rootless can be judged against a cleaner baseline:
-
-- is it a third explicit mode?
-- or can it reuse one existing mode plus one or two small overrides?
-
-My current assessment from the pre-rootless script alone is:
-
-- the script already has enough ballast that rootless should not be added as a
-  small ad hoc branch
-- if rootless is added later, it should be done against an explicit mode model
-  rather than by inferring behavior from scattered conditions
+<!-- pyml disable md013 -->
+| Mode | Inputs that matter most | What the script does |
+| --- | --- | --- |
+| Non-root runtime user | `AICAGE_UID`, `AICAGE_GID`, `AICAGE_HOST_USER`, `AICAGE_HOME` | Create a matching user, repair access, then run through `gosu`. |
+| Root runtime | `AICAGE_HOME` and maybe `AICAGE_MOUNT_HOME` | Stay root, use the chosen home, and maybe mirror mounted home paths into `/root`. |
+<!-- pyml enable md013 -->

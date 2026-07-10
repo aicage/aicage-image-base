@@ -52,14 +52,17 @@ cleanup_mount_dir() {
   run docker run --rm \
     --env AICAGE_WORKSPACE=/workspace \
     -v "${host_dir}/.aicage-test-file:/mnt/d/Users/hoster/.aicage-test-file:ro" \
-    --env AICAGE_HOST_USER=hoster \
-    --env AICAGE_HOME=/mnt/d/Users/hoster \
+    --env AICAGE_UID=0 \
+    --env AICAGE_GID=0 \
+    --env AICAGE_HOST_USER=root \
+    --env AICAGE_HOME=/root \
+    --env AICAGE_MOUNT_HOME=/mnt/d/Users/hoster \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
       [[ -L /root/.aicage-test-file ]]
       [[ $(readlink -f /root/.aicage-test-file) == "/mnt/d/Users/hoster/.aicage-test-file" ]]
-      [[ ! -L "${AICAGE_HOME}/.aicage-test-file" ]]
+      [[ ! -L "${AICAGE_MOUNT_HOME}/.aicage-test-file" ]]
       cat /root/.aicage-test-file
     '
   [ "$status" -eq 0 ]
@@ -77,8 +80,11 @@ cleanup_mount_dir() {
     --entrypoint /bin/bash \
     --env AICAGE_WORKSPACE=/workspace \
     -v "${host_dir}/.aicage-test-file:/mnt/d/Users/hoster/.aicage-test-file:ro" \
-    --env AICAGE_HOST_USER=hoster \
-    --env AICAGE_HOME=/mnt/d/Users/hoster \
+    --env AICAGE_UID=0 \
+    --env AICAGE_GID=0 \
+    --env AICAGE_HOST_USER=root \
+    --env AICAGE_HOME=/root \
+    --env AICAGE_MOUNT_HOME=/mnt/d/Users/hoster \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
@@ -92,6 +98,34 @@ cleanup_mount_dir() {
       "
     '
   [ "$status" -eq 0 ]
+}
+
+@test "reduced contract supports non-linux home mirroring directly" {
+  host_dir="$(mktemp -d)"
+  trap 'cleanup_mount_dir "${host_dir}"' RETURN
+  chmod 755 "${host_dir}"
+  mkdir -p "${host_dir}/dir-a"
+  chmod 755 "${host_dir}/dir-a"
+  printf 'dir-data\n' >"${host_dir}/dir-a/config"
+  chmod 644 "${host_dir}/dir-a/config"
+
+  run docker run --rm \
+    --env AICAGE_WORKSPACE=/workspace \
+    -v "${host_dir}/dir-a:/mnt/d/Users/hoster/.aicage-test-dir:ro" \
+    --env AICAGE_UID=0 \
+    --env AICAGE_GID=0 \
+    --env AICAGE_HOST_USER=root \
+    --env AICAGE_HOME=/root \
+    --env AICAGE_MOUNT_HOME=/mnt/d/Users/hoster \
+    "${AICAGE_IMAGE_BASE_IMAGE}" \
+    -c '
+      set -euo pipefail
+      [[ -L /root/.aicage-test-dir ]]
+      [[ $(readlink -f /root/.aicage-test-dir) == "/mnt/d/Users/hoster/.aicage-test-dir" ]]
+      cat /root/.aicage-test-dir/config
+    '
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"dir-data"* ]]
 }
 
 @test "home dir mounts are directly available in AICAGE_HOME" {
@@ -140,8 +174,11 @@ cleanup_mount_dir() {
     --env AICAGE_WORKSPACE=/workspace \
     -v "${host_dir}/dir-a:/mnt/d/Users/hoster/.aicage-test-dir-a:ro" \
     -v "${host_dir}/dir-b:/mnt/d/Users/hoster/.aicage-test-dir-b:ro" \
-    --env AICAGE_HOST_USER=hoster \
-    --env AICAGE_HOME=/mnt/d/Users/hoster \
+    --env AICAGE_UID=0 \
+    --env AICAGE_GID=0 \
+    --env AICAGE_HOST_USER=root \
+    --env AICAGE_HOME=/root \
+    --env AICAGE_MOUNT_HOME=/mnt/d/Users/hoster \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
       set -euo pipefail
@@ -149,8 +186,8 @@ cleanup_mount_dir() {
       [[ -L /root/.aicage-test-dir-b ]]
       [[ $(readlink -f /root/.aicage-test-dir-a) == "/mnt/d/Users/hoster/.aicage-test-dir-a" ]]
       [[ $(readlink -f /root/.aicage-test-dir-b) == "/mnt/d/Users/hoster/.aicage-test-dir-b" ]]
-      [[ ! -L "${AICAGE_HOME}/.aicage-test-dir-a" ]]
-      [[ ! -L "${AICAGE_HOME}/.aicage-test-dir-b" ]]
+      [[ ! -L "${AICAGE_MOUNT_HOME}/.aicage-test-dir-a" ]]
+      [[ ! -L "${AICAGE_MOUNT_HOME}/.aicage-test-dir-b" ]]
       cat /root/.aicage-test-dir-a/config
       cat /root/.aicage-test-dir-b/known_hosts
     '
@@ -246,6 +283,7 @@ cleanup_mount_dir() {
     --env AICAGE_HOST_IS_LINUX=true \
     --env AICAGE_UID=1234 \
     --env AICAGE_GID=2345 \
+    --env AICAGE_HOST_USER=demo \
     --env AICAGE_HOME=/home/demo \
     "${AICAGE_IMAGE_BASE_IMAGE}" \
     -c '
