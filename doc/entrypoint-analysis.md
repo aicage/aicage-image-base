@@ -9,7 +9,8 @@ Scope:
 - Treat the entrypoint as a standalone contract.
 - Focus on what it reacts to, especially environment variables.
 - Focus on current behavior only.
-- Do not discuss future rootless support here.
+- Do not discuss future rootless Docker support here, except for the dedicated
+  terminology and requirements section below.
 
 ## Executive Summary
 
@@ -314,6 +315,88 @@ The script needs to know:
 - where the mounted host-home namespace lives
 
 When those differ, the current behavior depends on both.
+
+## What Rootless Docker Support Should Mean
+
+Here "rootless" means Docker's rootless mode on Linux, where the container may
+still see uid `0` internally, but that root user is mapped and constrained by a
+rootless daemon.
+
+The chosen strategy is to keep rootless support deliberately simple:
+
+- run as container `root`
+- keep `HOME=/root`
+- do not try to match the host username
+- do not try to remap root's `HOME` to the host home path
+
+That means rootless should be treated much closer to the current root-runtime
+compatibility model than to the non-root Linux host-user model.
+
+### Why this is the chosen direction
+
+Trying to make rootless feel like normal Linux host-user mode by remapping root
+to the host home path sounds attractive, but it makes the contract brittle:
+
+- config lookup and mutable temp/state paths get mixed together
+- bind-mounted host home ownership becomes harder to reason about
+- tool-specific behavior starts leaking into the entrypoint contract
+- rootless stops being easy to explain
+
+Since rootless is a side feature here, simplicity is worth more than a more
+"natural" home illusion.
+
+### Practical rootless contract
+
+For rootless, the caller should aim to produce the same broad runtime shape as
+the current root-runtime mode:
+
+- `AICAGE_UID=0`
+- `AICAGE_GID=0`
+- `AICAGE_HOST_USER=root`
+- `AICAGE_HOME=/root`
+
+What should explicitly not happen in the entrypoint for rootless:
+
+- no dynamic runtime user creation
+- no host username matching
+- no host-home remapping for root
+- no tool-specific temp/state path hacks
+
+### What this means for the current script
+
+This choice is intentionally conservative.
+
+It means rootless support should reuse as much of the current root-mode behavior
+as possible:
+
+- root execution path
+- root home semantics
+- no extra repair layer just for rootless
+
+So rootless does not need a large new entrypoint mode with separate home logic.
+It mainly needs correct caller-side decisions about when to use the existing
+root-runtime contract.
+
+### Remaining caveat
+
+Rootless Docker still changes what container root can effectively do against
+bind-mounted host paths.
+
+So even with the simplified strategy, caller-side logic must still avoid
+assuming that rootless behaves like rootful Linux host-user mode.
+
+But that does not require making the entrypoint contract much larger.
+
+### Practical implication for future cleanup
+
+Before adding or re-adding rootless Docker support, it still helps to separate
+current behavior into two buckets:
+
+- behavior that is really required by the runtime contract
+- behavior that only exists to repair an inconvenient starting state
+
+For the chosen rootless strategy, the second bucket should stay as small as
+possible.
 
 ## Suspicious or Surprising Behavior
 
