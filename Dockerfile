@@ -4,6 +4,7 @@ ARG IMAGE_SOURCE_URL
 
 FROM ${FROM_IMAGE} AS from_image
 
+ARG IMAGE_SOURCE_URL
 ARG OS_INSTALLER
 
 LABEL org.opencontainers.image.title="aicage-image-base" \
