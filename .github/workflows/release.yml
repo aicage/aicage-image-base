@@ -21,11 +21,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 0
 
       - name: Verify tagged commit is on origin/main
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth=1 origin main
           if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"; then
             echo "Tag ${GITHUB_REF_NAME} points to ${GITHUB_SHA}, but that commit is not on origin/main." >&2
             echo "Push the commit to origin/main before pushing the release tag." >&2
