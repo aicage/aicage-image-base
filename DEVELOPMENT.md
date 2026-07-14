@@ -51,7 +51,7 @@ To test releases from a fork:
    AICAGE_BUILD_BASE_FILTER: "ubuntu|alpine"
    ```
 
-4. Push a Git tag to trigger the publish workflow. Prefer prerelease-style tags such as
+4. Push a Git tag to trigger the publishing workflow. Prefer prerelease-style tags such as
    `0.1.0-beta.1` or `0.1.0-alpha.1`.
 5. First release action run only:
    - One image building job likely fails with "cannot delete last/only tag of a package".

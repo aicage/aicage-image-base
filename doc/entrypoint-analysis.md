@@ -33,27 +33,27 @@ configuration before it finally `exec`s the target command.
 
 ### Environment variables read directly
 
-| Variable | Required? | Meaning in script | Default in script |
-| --- | --- | --- | --- |
-| `AICAGE_WORKSPACE` | No | Working directory | `/workspace` |
-| `AICAGE_ENTRYPOINT_CMD` | No | Final command to execute | `bash` |
-| `AICAGE_UID` | No | Target runtime uid | `0` |
-| `AICAGE_GID` | No | Target runtime gid | `0` |
-| `AICAGE_HOST_USER` | No | Target runtime username | `root` |
-| `AICAGE_HOME` | No | Active home path | `/root` |
-| `AICAGE_MOUNT_HOME` | No | Home mount anchor when different from active `HOME` | `AICAGE_HOME` |
-| `TZ` | No | Requested timezone | unset |
+| Variable                | Required? | Meaning in script                                   | Default in script |
+|-------------------------|-----------|-----------------------------------------------------|-------------------|
+| `AICAGE_WORKSPACE`      | No        | Working directory                                   | `/workspace`      |
+| `AICAGE_ENTRYPOINT_CMD` | No        | Final command to execute                            | `bash`            |
+| `AICAGE_UID`            | No        | Target runtime uid                                  | `0`               |
+| `AICAGE_GID`            | No        | Target runtime gid                                  | `0`               |
+| `AICAGE_HOST_USER`      | No        | Target runtime username                             | `root`            |
+| `AICAGE_HOME`           | No        | Active home path                                    | `/root`           |
+| `AICAGE_MOUNT_HOME`     | No        | Home mount anchor when different from active `HOME` | `AICAGE_HOME`     |
+| `TZ`                    | No        | Requested timezone                                  | unset             |
 
 ### Other inputs the script reacts to
 
-| Input | Why it matters |
-| --- | --- |
-| `$@` | Passed to the final command. |
-| `/etc/skel` | Copied into home when safe. |
-| `/proc/self/mountinfo` | Used to discover mountpoints under `AICAGE_MOUNT_HOME` or `AICAGE_HOME`. |
-| Existing passwd/group state | Can trigger user deletion, user creation, and group creation. |
-| `/var/run/docker.sock` | Triggers Docker socket group repair. |
-| Existing filesystem layout | Drives mountpoint checks, `chown`, directory creation, and symlink mirroring. |
+| Input                       | Why it matters                                                                |
+|-----------------------------|-------------------------------------------------------------------------------|
+| `$@`                        | Passed to the final command.                                                  |
+| `/etc/skel`                 | Copied into home when safe.                                                   |
+| `/proc/self/mountinfo`      | Used to discover mountpoints under `AICAGE_MOUNT_HOME` or `AICAGE_HOME`.      |
+| Existing passwd/group state | Can trigger user deletion, user creation, and group creation.                 |
+| `/var/run/docker.sock`      | Triggers Docker socket group repair.                                          |
+| Existing filesystem layout  | Drives mountpoint checks, `chown`, directory creation, and symlink mirroring. |
 
 ## Effective Modes
 
@@ -114,18 +114,18 @@ The main control flow is:
 
 ## Behavior Matrix
 
-| Behavior | Non-root runtime user | Root runtime |
-| --- | --- | --- |
-| Create dynamic user/group | Yes | No |
-| Add runtime user to Docker socket group | Yes | No |
-| Copy `/etc/skel` into `AICAGE_HOME` | Yes | No |
-| `chown` existing workspace | Yes | No |
-| `chown` non-mounted home parent directories | Yes | No |
-| Mirror mountpoints into `/root` | No | Sometimes |
-| Active `HOME` becomes `AICAGE_HOME` | Yes | Yes |
-| Run final command through `gosu` | Yes | No |
-| Apply `TZ` | Yes | Yes |
-| Refuse mounted `/home` or `/root` roots | Yes | Yes |
+| Behavior                                    | Non-root runtime user | Root runtime |
+|---------------------------------------------|-----------------------|--------------|
+| Create dynamic user/group                   | Yes                   | No           |
+| Add runtime user to Docker socket group     | Yes                   | No           |
+| Copy `/etc/skel` into `AICAGE_HOME`         | Yes                   | No           |
+| `chown` existing workspace                  | Yes                   | No           |
+| `chown` non-mounted home parent directories | Yes                   | No           |
+| Mirror mountpoints into `/root`             | No                    | Sometimes    |
+| Active `HOME` becomes `AICAGE_HOME`         | Yes                   | Yes          |
+| Run final command through `gosu`            | Yes                   | No           |
+| Apply `TZ`                                  | Yes                   | Yes          |
+| Refuse mounted `/home` or `/root` roots     | Yes                   | Yes          |
 
 ## What Each Env Var Actually Controls
 
@@ -231,18 +231,18 @@ If invalid, startup fails.
 ## Function-Level Behavior Map
 
 <!-- pyml disable md013 -->
-| Function | Trigger | What it does |
-| --- | --- | --- |
-| `ensure_home_is_not_mounted` | Always called for home roots | Refuses startup if the path or a parent is a mountpoint. |
-| `copy_skel_if_safe` | Non-root user setup | Copies `/etc/skel` into the target home when the home is not a mountpoint. |
-| `apply_timezone` | `TZ` set | Replaces system timezone files. |
-| `list_home_mount_points` | Called by home-mount helpers | Lists mountpoints under the mount-home anchor. |
-| `filter_nested_mount_points` | Called by home-mount helpers | Keeps only top-level mountpoints. |
-| `ensure_home_mount_parents_owned` | Non-root mode | `chown`s non-mounted parent directories under the mount-home anchor. |
-| `mirror_windows_home_mounts_to_root` | Root mode with separate mount anchor | Symlinks `/root/...` to mounted home paths. |
-| `setup_user_and_group` | Non-root mode | Rebuilds the runtime account and home model. |
-| `setup_docker_group` | Non-root mode and socket exists | Aligns socket gid and adds the runtime user to that group. |
-| `setup_workspace` | Non-root mode | Repairs workspace and home-parent ownership. |
+| Function                             | Trigger                              | What it does                                                               |
+|--------------------------------------|--------------------------------------|----------------------------------------------------------------------------|
+| `ensure_home_is_not_mounted`         | Always called for home roots         | Refuses startup if the path or a parent is a mountpoint.                   |
+| `copy_skel_if_safe`                  | Non-root user setup                  | Copies `/etc/skel` into the target home when the home is not a mountpoint. |
+| `apply_timezone`                     | `TZ` set                             | Replaces system timezone files.                                            |
+| `list_home_mount_points`             | Called by home-mount helpers         | Lists mountpoints under the mount-home anchor.                             |
+| `filter_nested_mount_points`         | Called by home-mount helpers         | Keeps only top-level mountpoints.                                          |
+| `ensure_home_mount_parents_owned`    | Non-root mode                        | `chown`s non-mounted parent directories under the mount-home anchor.       |
+| `mirror_windows_home_mounts_to_root` | Root mode with separate mount anchor | Symlinks `/root/...` to mounted home paths.                                |
+| `setup_user_and_group`               | Non-root mode                        | Rebuilds the runtime account and home model.                               |
+| `setup_docker_group`                 | Non-root mode and socket exists      | Aligns socket gid and adds the runtime user to that group.                 |
+| `setup_workspace`                    | Non-root mode                        | Repairs workspace and home-parent ownership.                               |
 <!-- pyml enable md013 -->
 
 ## Current Side Effects
@@ -437,8 +437,8 @@ That is not mainly a mode problem, but it is part of the current behavior.
 If someone only remembers one summary, it should be this:
 
 <!-- pyml disable md013 -->
-| Mode | Inputs that matter most | What the script does |
-| --- | --- | --- |
-| Non-root runtime user | `AICAGE_UID`, `AICAGE_GID`, `AICAGE_HOST_USER`, `AICAGE_HOME` | Create a matching user, repair access, then run through `gosu`. |
-| Root runtime | `AICAGE_HOME` and maybe `AICAGE_MOUNT_HOME` | Stay root, use the chosen home, and maybe mirror mounted home paths into `/root`. |
+| Mode                  | Inputs that matter most                                       | What the script does                                                              |
+|-----------------------|---------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| Non-root runtime user | `AICAGE_UID`, `AICAGE_GID`, `AICAGE_HOST_USER`, `AICAGE_HOME` | Create a matching user, repair access, then run through `gosu`.                   |
+| Root runtime          | `AICAGE_HOME` and maybe `AICAGE_MOUNT_HOME`                   | Stay root, use the chosen home, and maybe mirror mounted home paths into `/root`. |
 <!-- pyml enable md013 -->
