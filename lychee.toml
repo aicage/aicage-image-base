@@ -1,0 +1,10 @@
+exclude_path = [
+    # "\\.txt$",      # skip .txt extensions
+    # "(^|/)test/",   # skip directories named "test"
+    # "[aeiouAEIOU]", # exclude paths containing vowels
+    # excluding "docker://alpine:3.20"
+    # in .lycheeignore or by "exclude" here does not work
+    # lychee fails to parse them (?) and only excluding the files helps
+    ".github/workflows/build-all-images.yml",
+    ".github/workflows/ghcr-cleanup.yml"
+]
