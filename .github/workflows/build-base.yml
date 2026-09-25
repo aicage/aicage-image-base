@@ -230,7 +230,7 @@ jobs:
             --base "${BASE_ALIAS}"
 
       - name: Generate and attest SBOM
-        uses: gh-workflow/image-sbom@6c0fffba4127bf166b8d0746332a83bd9826dd81  # v1.0.4
+        uses: gh-workflow/image-sbom@b6d8de80de938ddebdf32dae7966386de8387db4  # v1.0.5
         with:
           image: ${{ env.IMAGE_NAME }}@${{ steps.build_image.outputs.digest }}
           registry-username: ${{ github.actor }}
@@ -300,7 +300,7 @@ jobs:
 
       - name: Use multi-arch publish action
         id: publish
-        uses: gh-workflow/multiarch-image-publish@310d8b3eb42bc5d1dc6746e70e449b93f63a41af  # 0.2.2
+        uses: gh-workflow/multiarch-image-publish@7f8a855c8761fb1ebded6bc06a96ea56dff6e653  # 0.2.3
         env:
           IMAGE_NAME: ${{ needs.build.outputs.IMAGE_NAME }}
         with:
