@@ -3,7 +3,7 @@
 pymarkdownlnt>=0.9.40,<1
 pytest>=9.1.1,<10
 pytest-cov>=7.1.0,<8
-check-jsonschema>=0.38.0,<1
+check-jsonschema>=0.38.2,<1
 yamllint>=1.38.0,<2
 
 # Updates due to reports by 'osv-scanner'
