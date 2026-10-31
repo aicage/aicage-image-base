@@ -9,6 +9,7 @@ set -euo pipefail
 # - AICAGE_HOST_USER: target runtime username
 # - AICAGE_HOME: target runtime home
 # - AICAGE_MOUNT_HOME: home mount anchor when it differs from active HOME
+# - AICAGE_ACP_WSL: wrap the final command with acp-wsl when present
 
 AICAGE_WORKSPACE="${AICAGE_WORKSPACE:-/workspace}"
 AICAGE_UID="${AICAGE_UID:-0}"
@@ -315,10 +316,16 @@ fi
 cd "${AICAGE_WORKSPACE}"
 
 : "${AICAGE_ENTRYPOINT_CMD:=bash}"
+entrypoint_cmd=("${AICAGE_ENTRYPOINT_CMD}")
+
+# Windows IDE clients send Windows paths over ACP; acp-wsl translates them for WSL agents.
+if [[ -v AICAGE_ACP_WSL ]]; then
+  entrypoint_cmd=(acp-wsl -- "${entrypoint_cmd[@]}")
+fi
 
 if [[ "${AICAGE_HOST_USER}" == "root" ]]; then
-  exec "${AICAGE_ENTRYPOINT_CMD}" "$@"
+  exec "${entrypoint_cmd[@]}" "$@"
 else
   # switch to user
-  exec gosu "${AICAGE_UID}" "${AICAGE_ENTRYPOINT_CMD}" "$@"
+  exec gosu "${AICAGE_UID}" "${entrypoint_cmd[@]}" "$@"
 fi
